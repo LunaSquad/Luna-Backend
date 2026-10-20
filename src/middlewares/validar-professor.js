@@ -1,73 +1,98 @@
 import { z } from "zod";
+import { nomeSchema, sobrenomeSchema, emailSchema, cpfSchema, senhaSchema, dataNascSchema, telefoneSchema } from "./schemas-base.js";
+import { responderErroValidacao } from "./helpers/responder-erro-validacao.js";
+import { converterCamposJSON } from "./helpers/converter-campos-json.js";
+import { limparArquivoCloudinary } from "./helpers/limpar-cloudinary.js";
 
-// Validação de ObjectId válido do MongoDB
-const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+const dadosUsuarioSchema = z.object({
+  email: emailSchema,
+  senha: senhaSchema,
+}).strict();
 
-// 1. Esquema de Validação para o Cadastro do Professor
+const dadosProfessorSchema = z.object({
+  nome: nomeSchema,
+  sobrenome: sobrenomeSchema,
+  cpf: cpfSchema,
+  dataNasc: dataNascSchema,
+  cidade: z
+    .string()
+    .trim()
+    .min(2, "A cidade deve ter pelo menos 2 caracteres.")
+    .max(100, "A cidade deve ter no máximo 100 caracteres."),
+  telefone: telefoneSchema,
+}).strict();
+
+// Schema de Cadastro
 const registroProfessorSchema = z.object({
-  dadosUsuario: z.object({
-    email: z.string().email("Formato de e-mail inválido."),
-    senha: z.string().min(6, "A palavra-passe deve ter pelo menos 6 caracteres.")
-  }),
-  dadosProfessor: z.object({
-    nome: z.string().min(2, "O nome deve ter no mínimo 2 letras."),
-    sobrenome: z.string().min(2, "O sobrenome deve ter no mínimo 2 letras."),
-    cpf: z.string().regex(/^\d{11}$/, "O CPF deve conter exatamente 11 números (sem pontos ou traços)."),
-    rg: z.string().min(4, "O RG é obrigatório."),
-    dataNasc: z.string().datetime("A data de nascimento deve estar no formato ISO (ex: 1990-01-01T00:00:00Z)."),
-    cidade: z.string().min(2, "A cidade é obrigatória."),
-    telefone: z.string().regex(/^\d{10,11}$/, "O telefone deve conter entre 10 e 11 números.").optional()
-  })
-});
+  dadosUsuario: dadosUsuarioSchema,
+  dadosProfessor: dadosProfessorSchema,
+}).strict();
 
-// 2. Esquema de Validação para a Atualização do Professor
+// Schema de Atualização
+const dadosUsuarioUpdateSchema = dadosUsuarioSchema.partial().refine(
+  (dados) => Object.values(dados).some((valor) => valor !== undefined),
+  "Informe pelo menos um dado do usuário.",
+);
+
+const dadosProfessorUpdateSchema = dadosProfessorSchema.partial().refine(
+  (dados) => Object.values(dados).some((valor) => valor !== undefined),
+  "Informe pelo menos um dado do professor.",
+);
+
 const updateProfessorSchema = z.object({
-  nome: z.string().min(2, "O nome deve ter no mínimo 2 letras."),
-  sobrenome: z.string().min(2, "O sobrenome deve ter no mínimo 2 letras."),
-  cpf: z.string().regex(/^\d{11}$/, "O CPF deve conter exatamente 11 números."),
-  rg: z.string().min(4, "O RG é obrigatório."),
-  dataNasc: z.string().datetime("Formato de data inválido."),
-  cidade: z.string().min(2, "A cidade é obrigatória."),
-  telefone: z.string().regex(/^\d{10,11}$/, "O telefone deve conter entre 10 e 11 números.")
-}).partial();
+  dadosUsuario: dadosUsuarioUpdateSchema.optional(),
+  dadosProfessor: dadosProfessorUpdateSchema.optional(),
+}).strict();
+
 
 // --- MIDDLEWARES ---
 
-export const validarCadastroProfessor = (req, res, next) => {
+// Middleware de Cadastro
+export const validarCadastroProfessor = async (req, res, next) => {
   try {
-    registroProfessorSchema.parse(req.body);
-    next();
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+    if (!req.file) {
       return res.status(400).json({
-        erro: "Erro de validação no registo do professor",
-        detalhes: error.issues.map(err => ({
-          campo: err.path.join('.'),
-          mensagem: err.message
-        }))
+        erro: "A foto de perfil é obrigatória.",
       });
     }
-    // Se não for Zod, é um erro de código ou servidor
-    console.error("Erro inesperado no validarCadastroProfessor:", error);
-    return res.status(500).json({ erro: "Erro interno no servidor" });
+
+    converterCamposJSON(req.body, ["dadosUsuario", "dadosProfessor"]);
+
+    req.body = registroProfessorSchema.parse(req.body);
+
+    return next();
+
+  } catch (error) {
+    await limparArquivoCloudinary(req.file);
+
+    return responderErroValidacao(res, error, "no cadastro do professor");
   }
 };
 
-export const validarUpdateProfessor = (req, res, next) => {
+// Middleware de Atualização
+export const validarUpdateProfessor = async (req, res, next) => {
   try {
-    updateProfessorSchema.parse(req.body);
-    next();
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+    converterCamposJSON(req.body, ["dadosUsuario", "dadosProfessor"]);
+
+    const dadosValidados = updateProfessorSchema.parse(req.body);
+
+    const temDadosUsuario = Boolean(dadosValidados.dadosUsuario);
+    const temDadosProfessor = Boolean(dadosValidados.dadosProfessor);
+    const temNovaFoto = Boolean(req.file);
+
+    if (!temDadosUsuario && !temDadosProfessor && !temNovaFoto) {
       return res.status(400).json({
-        erro: "Erro de validação na atualização do professor",
-        detalhes: error.issues.map(err => ({
-          campo: err.path.join('.'),
-          mensagem: err.message
-        }))
+        erro: "Informe pelo menos um dado ou uma nova foto para atualizar.",
       });
     }
-    console.error("Erro inesperado no validarUpdateProfessor:", error);
-    return res.status(500).json({ erro: "Erro interno no servidor" });
+
+    req.body = dadosValidados;
+
+    return next();
+
+  } catch (error) {
+    await limparArquivoCloudinary(req.file);
+
+    return responderErroValidacao(res, error, "na atualização do professor");
   }
 };

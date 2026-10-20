@@ -1,49 +1,57 @@
 import { z } from "zod";
+import { nomeSchema } from "./schemas-base.js";
+import { responderErroValidacao } from "./helpers/responder-erro-validacao.js";
 
-// Validação de ObjectId válido do MongoDB
-const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+const dadosTurmaSchema = z.object({
+  nome: nomeSchema,
+}).strict();
 
-// 1. Esquema de Validação para o Cadastro da Turma
+// Schema de Cadastro
 const registroTurmaSchema = z.object({
-  nome: z.string().min(2, "O nome da turma deve ter no mínimo 2 caracteres."),
-  alunosEmails: z.array(z.string().email("Formato de e-mail inválido.")).optional()
-});
+  dadosTurma: dadosTurmaSchema,
+}).strict();
 
-// 2. Esquema de Validação para a Atualização da Turma
+// Schema de Atualização
+const dadosTurmaUpdateSchema = dadosTurmaSchema.partial().refine(
+  (dados) => Object.values(dados).some((valor) => valor !== undefined),
+  "Informe pelo menos um dado da turma.",
+);
+
 const updateTurmaSchema = z.object({
-  nome: z.string().min(2, "O nome da turma deve ter no mínimo 2 caracteres."),
-  professorId: z.string().regex(objectIdRegex, "ID de professor inválido.")
-}).partial();
+  dadosTurma: dadosTurmaUpdateSchema.optional(),
+}).strict();
 
 // --- MIDDLEWARES ---
+
+// Middleware de Cadastro
 export const validarCadastroTurma = (req, res, next) => {
   try {
-    registroTurmaSchema.parse(req.body);
-    next();
+    req.body = registroTurmaSchema.parse(req.body);
+
+    return next();
+
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        erro: "Erro de validação no registo da turma",
-        detalhes: error.issues.map(err => ({ campo: err.path.join('.'), mensagem: err.message }))
-      });
-    }
-    console.error("Erro inesperado no validarCadastroTurma:", error);
-    return res.status(500).json({ erro: "Erro interno no servidor" });
+    return responderErroValidacao(res, error, "no cadastro da turma");
   }
 };
 
+// Middleware de Atualização
 export const validarUpdateTurma = (req, res, next) => {
   try {
-    updateTurmaSchema.parse(req.body);
-    next();
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+    const dadosValidados = updateTurmaSchema.parse(req.body);
+    const temDadosTurma = Boolean(dadosValidados.dadosTurma);
+
+    if (!temDadosTurma) {
       return res.status(400).json({
-        erro: "Erro de validação na atualização da turma",
-        detalhes: error.issues.map(err => ({ campo: err.path.join('.'), mensagem: err.message }))
+        erro: "Informe pelo menos um dado da turma para atualizar.",
       });
     }
-    console.error("Erro inesperado no validarUpdateTurma:", error);
-    return res.status(500).json({ erro: "Erro interno no servidor" });
+
+    req.body = dadosValidados;
+
+    return next();
+
+  } catch (error) {
+    return responderErroValidacao(res, error, "na atualização da turma");
   }
 };
