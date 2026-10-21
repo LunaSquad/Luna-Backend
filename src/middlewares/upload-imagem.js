@@ -13,7 +13,7 @@ cloudinary.config({
 
 const criarUploader = (nomeDaPasta) => {
   const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
+    cloudinary,
     params: {
       folder: `luna_uploads/${nomeDaPasta}`,
       allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'pdf'], 
@@ -21,12 +21,14 @@ const criarUploader = (nomeDaPasta) => {
   });
 
   return multer({ 
-    storage: storage,
+    storage,
     limits: {
       fileSize: 5 * 1024 * 1024 // Limite de 5MB
     }
   });
 };
+
+export { cloudinary };
 
 export const uploadProfessor = criarUploader('professores');
 export const uploadAluno = criarUploader('alunos');

@@ -1,73 +1,135 @@
 import { z } from "zod";
+import { nomeSchema, emailSchema, cpfSchema, senhaSchema, dataNascSchema, telefoneSchema } from "./schemas-base.js";
+import { responderErroValidacao } from "./helpers/responder-erro-validacao.js";
+import { converterCamposJSON } from "./helpers/converter-campos-json.js";
+import { limparArquivoCloudinary, limparArquivosMultiplosCloudinary } from "./helpers/limpar-cloudinary.js";
 
-// Validação de ObjectId válido do MongoDB
-const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+const dadosUsuarioSchema = z.object({
+  email: emailSchema,
+  senha: senhaSchema,
+}).strict();
 
-// 1. Esquema de Validação para o Cadastro do Aluno
+const dadosAlunoSchema = z.object({
+  nome: nomeSchema,
+  nomeResponsavel: nomeSchema,
+  cpf: cpfSchema,
+  cpfResponsavel: cpfSchema,
+  dataNasc: dataNascSchema,
+  emailResponsavel: emailSchema,
+  telefone: telefoneSchema
+}).strict();
+
+// Schema de Cadastro (Todos os campos de Cadastro)
 const registroAlunoSchema = z.object({
-  dadosUsuario: z.object({
-    email: z.string().email("Formato de e-mail inválido."),
-    senha: z.string().min(6, "A senha deve ter pelo menos 6 caracteres.")
-  }),
-  dadosAluno: z.object({
-    turmaId: z.string().regex(objectIdRegex, "ID de turma inválido.").optional(),
-    nome: z.string().min(2, "O nome deve ter no mínimo 2 letras."),
-    cpf: z.string().regex(/^\d{11}$/, "O CPF deve conter exatamente 11 números (sem pontos ou traços)."),
-    dataNasc: z.string().datetime("A data de nascimento deve estar no formato ISO (ex: 2010-05-20T00:00:00Z)."),
-    telefone: z.string().regex(/^\d{10,11}$/, "O telefone deve conter entre 10 e 11 dígitos numéricos."),
-    nomeResponsavel: z.string().min(2, "O nome do responsável é obrigatório."),
-    cpfResponsavel: z.string().regex(/^\d{11}$/, "O CPF do responsável deve conter exatamente 11 números.")
-  })
-});
+  dadosUsuario: dadosUsuarioSchema,
+  dadosAluno: dadosAlunoSchema,
+}).strict();
 
-// 2. Esquema de Validação para a Atualização do Aluno
+// Schema de Atualização (Permite campos isolados de Cadastro)
+const dadosUsuarioUpdateSchema = dadosUsuarioSchema.partial().refine(
+  (dados) => Object.values(dados).some((valor) => valor !== undefined),
+  "Informe pelo menos um dado do usuário."
+);
+
+const dadosAlunoUpdateSchema = dadosAlunoSchema.partial().refine(
+  (dados) => Object.values(dados).some((valor) => valor !== undefined),
+  "Informe pelo menos um dado do aluno."
+);
+
 const updateAlunoSchema = z.object({
-  turmaId: z.string().regex(objectIdRegex, "ID de turma inválido."),
-  nome: z.string().min(2, "O nome deve ter no mínimo 2 letras."),
-  email: z.string().email("Formato de e-mail inválido."),
-  cpf: z.string().regex(/^\d{11}$/, "O CPF deve conter exatamente 11 números."),
-  dataNasc: z.string().datetime("Formato de data inválido."),
-  telefone: z.string().regex(/^\d{10,11}$/, "O telefone deve conter entre 10 e 11 dígitos numéricos."),
-  nomeResponsavel: z.string().min(2, "O nome do responsável é obrigatório."),
-  cpfResponsavel: z.string().regex(/^\d{11}$/, "O CPF do responsável deve conter exatamente 11 números.")
-}).partial();
+  dadosUsuario: dadosUsuarioUpdateSchema.optional(),
+  dadosAluno: dadosAlunoUpdateSchema.optional(),
+}).strict();
+
+// Schema Editar Hiperfoco
+const updateHiperfocoSchema = z.object({
+  hiperfoco: z
+    .string()
+    .trim()
+    .min(2, "O hiperfoco deve ter pelo menos 2 caracteres.")
+    .max(100, "O hiperfoco deve ter no máximo 100 caracteres.")
+    .optional(),
+}).strict();
 
 // --- MIDDLEWARES ---
 
-export const validarCadastroAluno = (req, res, next) => {
+// Middleware de Cadastro
+export const validarCadastroAluno = async (req, res, next) => {
   try {
-    registroAlunoSchema.parse(req.body);
-    next();
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+    const temFotoAluno = Boolean(req.files?.fotoAluno?.[0]);
+    const temFotoLaudo = Boolean(req.files?.fotoLaudo?.[0]);
+
+    if (!temFotoAluno || !temFotoLaudo) {
+      await limparArquivosMultiplosCloudinary(req.files);
       return res.status(400).json({
-        erro: "Erro de validação no registro do aluno",
-        detalhes: error.issues.map(err => ({
-          campo: err.path.join('.'),
-          mensagem: err.message
-        }))
+        erro: "A foto do aluno e a foto do laudo são obrigatórias no cadastro.",
       });
     }
-    console.error("Erro inesperado no validarCadastroAluno:", error);
-    return res.status(500).json({ erro: "Erro interno no servidor" });
+
+    converterCamposJSON(req.body, ["dadosUsuario", "dadosAluno"]);
+
+    req.body = registroAlunoSchema.parse(req.body);
+
+    return next();
+
+  } catch (error) {
+    await limparArquivosMultiplosCloudinary(req.files);
+
+    return responderErroValidacao(res, error, "no cadastro do aluno");
   }
 };
 
-export const validarUpdateAluno = (req, res, next) => {
+// Middleware de Atualização Geral
+export const validarUpdateAluno = async (req, res, next) => {
   try {
-    updateAlunoSchema.parse(req.body);
-    next();
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+    converterCamposJSON(req.body, ["dadosUsuario", "dadosAluno"]);
+
+    const dadosValidados = updateAlunoSchema.parse(req.body);
+
+    const temDadosUsuario = Boolean(dadosValidados.dadosUsuario);
+    const temDadosAluno = Boolean(dadosValidados.dadosAluno);
+    const temNovaFotoAluno = Boolean(req.files?.fotoAluno?.[0]);
+    const temNovaFotoLaudo = Boolean(req.files?.fotoLaudo?.[0]);
+
+    if (!temDadosUsuario && !temDadosAluno && !temNovaFotoAluno && !temNovaFotoLaudo) {
+      await limparArquivosMultiplosCloudinary(req.files);
+
       return res.status(400).json({
-        erro: "Erro de validação na atualização do aluno",
-        detalhes: error.issues.map(err => ({
-          campo: err.path.join('.'),
-          mensagem: err.message
-        }))
+        erro: "Envie pelo menos um dado ou uma nova foto para atualizar.",
       });
     }
-    console.error("Erro inesperado no validarUpdateAluno:", error);
-    return res.status(500).json({ erro: "Erro interno no servidor" });
+
+    req.body = dadosValidados;
+
+    return next();
+
+  } catch (error) {
+    await limparArquivosMultiplosCloudinary(req.files);
+    return responderErroValidacao(res, error, "na atualização do aluno");
+  }
+};
+
+// Middleware de Hiperfoco
+export const validarUpdateHiperfoco = async (req, res, next) => {
+  try {
+    const dadosValidados = updateHiperfocoSchema.parse(req.body);
+
+    const temTextoHiperfoco = dadosValidados.hiperfoco !== undefined;
+    const temFotoHiperfoco = Boolean(req.file);
+
+    if (!temTextoHiperfoco && !temFotoHiperfoco) {
+      return res.status(400).json({
+        erro: "Informe o nome do hiperfoco ou envie uma foto do hiperfoco.",
+      });
+    }
+
+    req.body = dadosValidados;
+
+    return next();
+
+  } catch (error) {
+    await limparArquivoCloudinary(req.file);
+
+    return responderErroValidacao(res, error, "na atualização do hiperfoco");
   }
 };
