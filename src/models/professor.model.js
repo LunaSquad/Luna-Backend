@@ -28,11 +28,6 @@ const professorSchema = new mongoose.Schema(
       type: Date,
       required: [true, "A data de nascimento é obrigatória"],
     },
-    rg: {
-      type: String,
-      required: [true, "O RG é obrigatório"],
-      unique: true,
-    },
     cidade: {
       type: String,
       required: [true, "A cidade é obrigatória"],
@@ -50,7 +45,7 @@ const professorSchema = new mongoose.Schema(
     email: {
       type: String,
       required: [true, "O email é obrigatório"],
-      unique: true, // Garante que não haja emails duplicados
+      unique: true,
       lowercase: true,
       trim: true,
       match: [

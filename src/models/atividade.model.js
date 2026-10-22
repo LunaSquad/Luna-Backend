@@ -2,10 +2,10 @@ import mongoose from "mongoose";
 
 const atividadeSchema = new mongoose.Schema(
   {
-    professorId: {
+    planoDeAulaId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Professor",
-      required: [true, "A atividade deve estar vinculada a um professor"],
+      ref: "PlanoDeAula",
+      required: [true, "A atividade deve estar vinculada a um plano de aula"],
       index: true,
     },
     alunoId: {
@@ -14,10 +14,10 @@ const atividadeSchema = new mongoose.Schema(
       required: [true, "A atividade deve estar vinculada a um aluno"],
       index: true,
     },
-    planoDeAulaId: {
+    professorId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "PlanoDeAula",
-      required: [true, "A atividade deve estar vinculada a um plano de aula"],
+      ref: "Professor",
+      required: [true, "A atividade deve estar vinculada a um professor"],
       index: true,
     },
     materiaId: {
@@ -26,14 +26,14 @@ const atividadeSchema = new mongoose.Schema(
       required: [true, "A atividade deve estar vinculada a uma matéria"],
       index: true,
     },
-    titulo: {
+    hiperfoco: {
       type: String,
       required: [true, "O título da atividade é obrigatório"],
       trim: true,
     },
     status: {
       type: String,
-      enum: ["pendente", "entregue", "corrigida", "atrasada"], // Restringe as opções aceitas
+      enum: ["pendente", "entregue", "corrigida", "atrasada"],
       required: true,
     },
     dataFinal: {
