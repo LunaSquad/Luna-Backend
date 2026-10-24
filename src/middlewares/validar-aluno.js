@@ -15,7 +15,6 @@ const dadosAlunoSchema = z.object({
   cpf: cpfSchema,
   cpfResponsavel: cpfSchema,
   dataNasc: dataNascSchema,
-  emailResponsavel: emailSchema,
   telefone: telefoneSchema
 }).strict();
 

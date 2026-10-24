@@ -7,6 +7,7 @@ const professorSchema = new mongoose.Schema(
       ref: "Usuario",
       required: [true, "O professor deve estar vinculado a um usuário"],
       index: true,
+      unique: true
     },
     nome: {
       type: String,
@@ -28,11 +29,6 @@ const professorSchema = new mongoose.Schema(
       type: Date,
       required: [true, "A data de nascimento é obrigatória"],
     },
-    rg: {
-      type: String,
-      required: [true, "O RG é obrigatório"],
-      unique: true,
-    },
     cidade: {
       type: String,
       required: [true, "A cidade é obrigatória"],
@@ -46,17 +42,6 @@ const professorSchema = new mongoose.Schema(
         "O telefone deve conter entre 10 e 11 dígitos numéricos (apenas números, com DDD)"
       ],
       required: [true, "O telefone de contato é obrigatório"],
-    },
-    email: {
-      type: String,
-      required: [true, "O email é obrigatório"],
-      unique: true, // Garante que não haja emails duplicados
-      lowercase: true,
-      trim: true,
-      match: [
-        /.+\@.+\..+/,
-        "Por favor, insira um email válido",
-      ],
     },
     urlFotoProfessor: {
       type: String,

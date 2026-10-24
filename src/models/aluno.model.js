@@ -2,12 +2,7 @@ import mongoose from "mongoose";
 
 const hiperfocoSchema = mongoose.Schema(
   {
-    nome: {
-      type: String,
-      trim: true,
-      default: null,
-    },
-    descricao: {
+    hiperfoco: {
       type: String,
       trim: true,
       default: null,
@@ -27,21 +22,33 @@ const alunoSchema = mongoose.Schema(
       ref: "Usuario",
       required: [true, "O aluno deve estar vinculado a um usuário"],
       index: true,
+      unique: true
     },
     turmaId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Turma",
       default: null,
+      index: true
     },
     nome: {
       type: String,
       required: [true, "O nome do aluno é obrigatório"],
       trim: true,
     },
+    nomeResponsavel: {
+      type: String,
+      required: [true, "O nome do responsável é obrigatório"],
+      trim: true,
+    },
     cpf: {
       type: String,
       required: [true, "O CPF é obrigatório"],
       unique: true,
+      trim: true,
+    },
+    cpfResponsavel: {
+      type: String,
+      required: [true, "O CPF do responsável é obrigatório"],
       trim: true,
     },
     dataNasc: {
@@ -56,27 +63,6 @@ const alunoSchema = mongoose.Schema(
         "O telefone deve conter entre 10 e 11 dígitos numéricos (apenas números, com DDD)"
       ],
       required: [true, "O telefone de contato é obrigatório"],
-    },
-    email: {
-      type: String,
-      required: [true, "O email é obrigatório"],
-      unique: true, // Garante que não haja emails duplicados
-      lowercase: true,
-      trim: true,
-      match: [
-        /.+\@.+\..+/,
-        "Por favor, insira um email válido",
-      ],
-    },
-    nomeResponsavel: {
-      type: String,
-      required: [true, "O nome do responsável é obrigatório"],
-      trim: true,
-    },
-    cpfResponsavel: {
-      type: String,
-      required: [true, "O CPF do responsável é obrigatório"],
-      trim: true,
     },
     urlFotoAluno: {
       type: String,
