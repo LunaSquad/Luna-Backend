@@ -7,6 +7,7 @@ const professorSchema = new mongoose.Schema(
       ref: "Usuario",
       required: [true, "O professor deve estar vinculado a um usuário"],
       index: true,
+      unique: true
     },
     nome: {
       type: String,
@@ -41,17 +42,6 @@ const professorSchema = new mongoose.Schema(
         "O telefone deve conter entre 10 e 11 dígitos numéricos (apenas números, com DDD)"
       ],
       required: [true, "O telefone de contato é obrigatório"],
-    },
-    email: {
-      type: String,
-      required: [true, "O email é obrigatório"],
-      unique: true,
-      lowercase: true,
-      trim: true,
-      match: [
-        /.+\@.+\..+/,
-        "Por favor, insira um email válido",
-      ],
     },
     urlFotoProfessor: {
       type: String,

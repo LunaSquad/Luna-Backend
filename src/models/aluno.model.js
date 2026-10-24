@@ -22,11 +22,13 @@ const alunoSchema = mongoose.Schema(
       ref: "Usuario",
       required: [true, "O aluno deve estar vinculado a um usuário"],
       index: true,
+      unique: true
     },
     turmaId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Turma",
       default: null,
+      index: true
     },
     nome: {
       type: String,

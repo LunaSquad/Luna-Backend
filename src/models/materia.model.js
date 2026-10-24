@@ -6,6 +6,7 @@ const materiaSchema = new mongoose.Schema(
       type: String,
       required: [true, "O nome da matéria é obrigatório"],
       trim: true,
+      unique: true
     },
   },
   { timestamps: true },
