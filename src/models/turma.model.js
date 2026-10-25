@@ -10,7 +10,7 @@ const turmaSchema = new mongoose.Schema(
     professorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Professor",
-      default: null,
+      required: true,
     },
     codigoConvite: {
       type: String,
