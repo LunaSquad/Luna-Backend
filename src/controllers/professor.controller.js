@@ -1,105 +1,87 @@
-import { v2 as cloudinary } from 'cloudinary';
 import ProfessorService from "../services/professor.service.js";
 
 class ProfessorController {
-
-  // 1. CREATE (POST /professores)
+  // 1. CREATE
   async criar(req, res) {
     try {
-      const { dadosProfessor, dadosUsuario } = req.body;
-
-      if (req.file) {
-        dadosProfessor.urlFotoProfessor = req.file.path;
-      }
-
-      const novoProfessor = await ProfessorService.registrar(dadosProfessor, dadosUsuario);
+      const novoProfessor = await ProfessorService.registrar(
+        req.body,
+        req.file
+      );
 
       return res.status(201).json({
-        mensagem: "Professor registado com sucesso!",
-        professor: novoProfessor
+        mensagem: "Professor cadastrado com sucesso!",
+        professor: novoProfessor,
       });
-
     } catch (error) {
-      if (req.file && req.file.filename) {
-        try {
-          await cloudinary.uploader.destroy(req.file.filename);
-        } catch (cloudinaryError) {
-          console.error("Erro ao tentar deletar imagem órfã do Cloudinary:", cloudinaryError);
-        }
-      }
-
-      return res.status(400).json({ erro: error.message });
+      return res.status(error.statusCode ?? 500).json({
+        erro: error.message,
+      });
     }
   }
 
-  // 2. READ ALL (GET /professores)
+  // 2. READ ALL — ADMIN
   async listar(req, res) {
     try {
       const professores = await ProfessorService.listarTodos();
-      return res.status(200).json(professores);
 
+      return res.status(200).json(professores);
     } catch (error) {
-      return res.status(500).json({ erro: "Erro interno ao listar os professores." });
+      return res.status(error.statusCode ?? 500).json({
+        erro: error.statusCode
+          ? error.message
+          : "Erro interno ao listar os professores.",
+      });
     }
   }
 
-  // 3. READ ONE (GET /professores/:id)
-  async buscarPorId(req, res) {
+  // 3. READ ONE
+  async buscarPerfil(req, res) {
     try {
-      const { id } = req.params;
-      const professor = await ProfessorService.buscarPorId(id);
+      const professor = await ProfessorService.buscarPorId(
+        req.usuario.professorId
+      );
 
       return res.status(200).json(professor);
-
     } catch (error) {
-      return res.status(404).json({ erro: error.message });
+      return res.status(error.statusCode ?? 500).json({
+        erro: error.message,
+      });
     }
   }
 
-  // 4. UPDATE (PUT /professores/:id)
-  async atualizar(req, res) {
+  // 4. UPDATE
+  async atualizarPerfil(req, res) {
     try {
-      const { id } = req.params;
-      const dadosAtualizados = req.body;
-
-      if (req.file) {
-        dadosAtualizados.urlFotoProfessor = req.file.path;
-      }
-
-      const professorAtualizado = await ProfessorService.atualizar(id, dadosAtualizados);
+      const professorAtualizado = await ProfessorService.atualizar(
+        req.usuario.professorId,
+        req.body,
+        req.file
+      );
 
       return res.status(200).json({
-        mensagem: "Os dados do professor foram atualizados com sucesso!",
-        professor: professorAtualizado
+        mensagem: "Perfil atualizado com sucesso!",
+        professor: professorAtualizado,
       });
-
     } catch (error) {
-      return res.status(400).json({ erro: error.message });
+      return res.status(error.statusCode ?? 500).json({
+        erro: error.message,
+      });
     }
   }
 
-  // 5. DELETE (DELETE /professores/:id)
-  async deletar(req, res) {
+  // 5. DELETE
+  async deletarPerfil(req, res) {
     try {
-      const { id } = req.params;
-      const resultado = await ProfessorService.deletar(id);
+      const resultado = await ProfessorService.deletar(
+        req.usuario.professorId
+      );
 
       return res.status(200).json(resultado);
-
     } catch (error) {
-      return res.status(400).json({ erro: error.message });
-    }
-  }
-
-  async obterTurma(req, res) {
-    try {
-      const usuarioId = req.usuario.id;
-      
-      const dadosTurma = await ProfessorService.buscarTurmaDoProfessor(usuarioId);
-      
-      return res.status(200).json(dadosTurma);
-    } catch (error) {
-      return res.status(400).json({ erro: error.message });
+      return res.status(error.statusCode ?? 500).json({
+        erro: error.message,
+      });
     }
   }
 }

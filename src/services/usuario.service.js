@@ -1,5 +1,6 @@
 import Usuario from '../models/usuario.model.js';
 import bcrypt from "bcrypt";
+import { AppError } from "../middlewares/helpers/app-error.js";
 
 class UsuarioService {
 
@@ -7,7 +8,7 @@ class UsuarioService {
   async criarUsuario(dados) {
     const usuarioExistente = await Usuario.findOne({ email: dados.email });
     if (usuarioExistente) {
-      throw new Error("Este email já esta em uso.");
+      throw new AppError("Este e-mail já está em uso.", 409);
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -22,7 +23,7 @@ class UsuarioService {
     // Retorna o usuário criado
     return await novoUsuario.save();
   }
-  
+
 
   // Método da busca de usuario por email
   async buscarUsuarioPorEmail(email) {
