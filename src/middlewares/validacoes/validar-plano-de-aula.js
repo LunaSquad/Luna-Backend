@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { objectIdSchema } from "./schemas-base.js";
-import { responderErroValidacao } from "./helpers/responder-erro-validacao.js";
-import { converterCamposJSON } from "./helpers/converter-campos-json.js";
-import { limparArquivoCloudinary } from "./helpers/limpar-cloudinary.js";
+import { objectIdSchema } from "../schemas-base.js";
+import { responderErroValidacao } from "../helpers/responder-erro-validacao.js";
+import { converterCamposJSON } from "../helpers/converter-campos-json.js";
+import { limparArquivoCloudinary } from "../helpers/limpar-cloudinary.js";
 
 const tipoConteudoSchema = z.preprocess(
   (valor) =>

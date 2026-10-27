@@ -1,6 +1,6 @@
 import { Router } from "express";
 import AlunoController from "../controllers/aluno.controller.js";
-import { validarCadastroAluno, validarUpdateAluno } from "../middlewares/validar-aluno.js";
+import { validarCadastroAluno, validarUpdateAluno } from "../middlewares/validacoes/validar-aluno.js";
 import { auth } from "../middlewares/auth.js";
 import { uploadAluno } from "../middlewares/upload-imagem.js";
 

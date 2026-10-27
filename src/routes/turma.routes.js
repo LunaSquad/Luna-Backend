@@ -1,6 +1,6 @@
 import { Router } from "express";
 import TurmaController from "../controllers/turma.controller.js";
-import { validarCadastroTurma, validarUpdateTurma } from "../middlewares/validar-turma.js";
+import { validarCadastroTurma, validarUpdateTurma } from "../middlewares/validacoes/validar-turma.js";
 import { auth } from "../middlewares/auth.js";
 
 const routes = Router();

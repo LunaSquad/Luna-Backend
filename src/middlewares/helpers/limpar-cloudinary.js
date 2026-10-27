@@ -35,3 +35,22 @@ export async function limparArquivosMultiplosCloudinary(files) {
     }
   });
 }
+
+export async function deletarArquivoAntigoPorUrl(url) {
+  if (!url || typeof url !== "string" || !url.includes("res.cloudinary.com")) return;
+
+  try {
+    const regex = /\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/;
+    const match = url.match(regex);
+    if (!match?.[1]) return;
+
+    const publicId = match[1];
+    const isPdf = url.toLowerCase().endsWith(".pdf");
+
+    await cloudinary.uploader.destroy(publicId, {
+      resource_type: isPdf ? "raw" : "image",
+    });
+  } catch (erro) {
+    console.error("Erro ao deletar arquivo antigo do Cloudinary por URL:", erro);
+  }
+}
