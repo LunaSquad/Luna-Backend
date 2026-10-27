@@ -1,27 +1,54 @@
 import { Router } from "express";
 import ProfessorController from "../controllers/professor.controller.js";
-import { validarCadastroProfessor, validarUpdateProfessor } from "../middlewares/validar-professor.js";
+import { validarCadastroProfessor, validarUpdateProfessor } from "../middlewares/validacoes/validar-professor.js";
 import { auth } from "../middlewares/auth.js";
+import { somenteProfessor } from "../middlewares/somente-professor.js";
+import { somenteAdmin } from "../middlewares/somente-admin.js";
 import { uploadProfessor } from "../middlewares/upload-imagem.js";
 
 const routes = Router();
 
-// 1. CREATE
-routes.post("/professores", uploadProfessor.single('foto'), validarCadastroProfessor, ProfessorController.criar);
+// Cadastro
+routes.post(
+  "/professores",
+  uploadProfessor.single("foto"),
+  validarCadastroProfessor,
+  ProfessorController.criar
+);
 
-// 2. READ ALL
-routes.get("/professores", auth, ProfessorController.listar);
+// Listar todos — exclusivo ADM
+routes.get(
+  "/professores",
+  auth,
+  somenteAdmin,
+  ProfessorController.listar
+);
 
-// BUSCAR TURMA DO PROFESSOR
-routes.get("/professores/turma", auth, ProfessorController.obterTurma);
+// Consultar perfil
+routes.get(
+  "/professores/perfil",
+  auth,
+  somenteProfessor,
+  ProfessorController.buscarPerfil
+);
 
-// 3. READ ONE
-routes.get("/professores/:id", auth, ProfessorController.buscarPorId);
+// Atualizar perfil
+routes.put(
+  "/professores/perfil",
+  auth,
+  somenteProfessor,
+  uploadProfessor.single("foto"),
+  validarUpdateProfessor,
+  ProfessorController.atualizarPerfil
+);
 
-// 4. UPDATE
-routes.put("/professores/:id", auth, uploadProfessor.single('foto'), validarUpdateProfessor, ProfessorController.atualizar);
 
-// 5. DELETE
-routes.delete("/professores/:id", auth, ProfessorController.deletar);
+// Excluir conta
+routes.delete(
+  "/professores/perfil",
+  auth,
+  somenteProfessor,
+  ProfessorController.deletarPerfil
+);
 
 export default routes;

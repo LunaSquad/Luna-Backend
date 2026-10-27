@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { nomeSchema, emailSchema, cpfSchema, senhaSchema, dataNascSchema, telefoneSchema } from "./schemas-base.js";
-import { responderErroValidacao } from "./helpers/responder-erro-validacao.js";
-import { converterCamposJSON } from "./helpers/converter-campos-json.js";
-import { limparArquivoCloudinary, limparArquivosMultiplosCloudinary } from "./helpers/limpar-cloudinary.js";
+import { nomeSchema, emailSchema, cpfSchema, senhaSchema, dataNascSchema, telefoneSchema } from "../schemas-base.js";
+import { responderErroValidacao } from "../helpers/responder-erro-validacao.js";
+import { converterCamposJSON } from "../helpers/converter-campos-json.js";
+import { limparArquivoCloudinary, limparArquivosMultiplosCloudinary } from "../helpers/limpar-cloudinary.js";
 
 const dadosUsuarioSchema = z.object({
   email: emailSchema,
