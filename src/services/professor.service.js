@@ -1,165 +1,255 @@
-import Professor from '../models/professor.model.js';
-import Usuario from '../models/usuario.model.js';
-import Turma from '../models/turma.model.js';
-import Aluno from '../models/aluno.model.js';
+import mongoose from "mongoose";
+import bcrypt from "bcrypt";
+import Professor from "../models/professor.model.js";
+import Usuario from "../models/usuario.model.js";
+import Turma from "../models/turma.model.js";
+import Aluno from "../models/aluno.model.js";
 import UsuarioService from "./usuario.service.js";
-import { v2 as cloudinary } from 'cloudinary';
-import dotenv from 'dotenv';
+import { AppError } from "../middlewares/helpers/app-error.js";
+import { limparArquivoCloudinary, deletarArquivoAntigoPorUrl } from "../middlewares/helpers/limpar-cloudinary.js";
 
-dotenv.config();
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
+const SALT_ROUNDS = 10;
 
 class ProfessorService {
 
-  // 1. CREATE - Método para registrar um novo professor
-  async registrar(dadosProfessor, dadosUsuario) {
-    const novoUsuario = await UsuarioService.criarUsuario({
-      ...dadosUsuario,
-      tipoUser: "professor"
-    });
+  // 1. CREATE
+  async registrar({ dadosUsuario, dadosProfessor }, file) {
+    let novoUsuario = null;
+    let novoProfessor = null;
 
     try {
-      const novoProfessor = new Professor({
-        ...dadosProfessor,
-        email: dadosUsuario.email,
-        usuarioId: novoUsuario._id
+      const cpfEmUso = await Professor.exists({
+        cpf: dadosProfessor.cpf,
       });
 
-      return await novoProfessor.save();
+      if (cpfEmUso) {
+        throw new AppError("Este CPF já está cadastrado.", 409);
+      }
 
+      novoUsuario = await UsuarioService.criarUsuario({
+        ...dadosUsuario,
+        tipoUser: "professor",
+      });
+
+      novoProfessor = await Professor.create({
+        ...dadosProfessor,
+        dataNasc: new Date(dadosProfessor.dataNasc),
+        usuarioId: novoUsuario._id,
+        urlFotoProfessor: file.path,
+      });
+
+      return await Professor.findById(novoProfessor._id).populate(
+        "usuarioId",
+        "email tipoUser"
+      );
     } catch (error) {
-      await Usuario.findByIdAndDelete(novoUsuario._id);
+      if (novoProfessor) {
+        await Professor.findByIdAndDelete(novoProfessor._id);
+      }
 
-      throw new Error(`Erro ao registar professor: ${error.message}`);
+      if (novoUsuario) {
+        await Usuario.findByIdAndDelete(novoUsuario._id);
+      }
+
+      await limparArquivoCloudinary(file);
+
+      if (error instanceof AppError) throw error;
+
+      throw new AppError(
+        `Erro ao registrar professor: ${error.message}`,
+        400
+      );
     }
   }
 
 
-  // 2. READ ALL - Método para listar todos os professores
+  // 2. READ ALL
   async listarTodos() {
-    return await Professor.find()
-      .populate("usuarioId", "email tipoUser")
+    return await Professor.find().populate("usuarioId", "email tipoUser");
   }
 
 
-  // 3. READ ONE - Métodos para buscar um professor por ID
+  // 3. READ ONE
   async buscarPorId(id) {
-    const professor = await Professor.findOne({ _id: id })
-      .populate("usuarioId", "email tipoUser")
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError("ID de professor inválido.", 400);
+    }
+
+    const professor = await Professor.findById(id).populate(
+      "usuarioId",
+      "email tipoUser"
+    );
 
     if (!professor) {
-      throw new Error("Professor não encontrado.");
+      throw new AppError("Professor não encontrado.", 404);
     }
+
     return professor;
   }
 
 
-  // 4. UPDATE - Método para atualizar os dados do professor
-  async atualizar(id, dadosAtualizados) {
-    const professorAtual = await Professor.findOne({ _id: id });
-
-    if (!professorAtual) {
-      throw new Error("Professor não encontrado para a atualização.");
+  // 4. UPDATE
+  async atualizar(id, { dadosUsuario, dadosProfessor } = {}, file) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      await limparArquivoCloudinary(file);
+      throw new AppError("ID de professor inválido.", 400);
     }
 
-    if (dadosAtualizados.urlFotoProfessor && professorAtual.urlFotoProfessor) {
-      if (dadosAtualizados.urlFotoProfessor !== professorAtual.urlFotoProfessor) {
-        try {
-          const partes = professorAtual.urlFotoProfessor.split('/');
-          const publicId = partes.slice(-3).join('/').split('.')[0];
-          await cloudinary.uploader.destroy(publicId);
-          console.log(`Foto antiga apagada do Cloudinary: ${publicId}`);
-        } catch (cloudinaryError) {
-          console.error("Erro ao apagar a foto antiga do professor:", cloudinaryError);
+    let fotoNovaVinculada = false;
+
+    try {
+      const professorAtual = await Professor.findById(id);
+
+      if (!professorAtual) {
+        throw new AppError(
+          "Professor não encontrado para atualização.",
+          404
+        );
+      }
+
+      // 4.1 Validar duplicidade de e-mail e CPF
+      if (dadosUsuario?.email) {
+        const emailEmUso = await Usuario.exists({
+          email: dadosUsuario.email,
+          _id: { $ne: professorAtual.usuarioId },
+        });
+
+        if (emailEmUso) {
+          throw new AppError("Este e-mail já está em uso.", 409);
         }
       }
-    }
 
-    const professorAtualizado = await Professor.findOneAndUpdate(
-      { _id: id },
-      dadosAtualizados,
-      { new: true }
-    );
+      if (dadosProfessor?.cpf && dadosProfessor.cpf !== professorAtual.cpf) {
+        const cpfEmUso = await Professor.exists({
+          cpf: dadosProfessor.cpf,
+          _id: { $ne: professorAtual._id },
+        });
 
-    if (!professorAtualizado) {
-      throw new Error("Professor não encontrado para a atualização.");
+        if (cpfEmUso) {
+          throw new AppError("Este CPF já está cadastrado.", 409);
+        }
+      }
+
+      // 4.2 Atualizar Usuario
+      if (dadosUsuario && Object.keys(dadosUsuario).length > 0) {
+        const camposUsuario = {};
+
+        if (dadosUsuario.email) {
+          camposUsuario.email = dadosUsuario.email;
+        }
+
+        if (dadosUsuario.senha) {
+          camposUsuario.senha = await bcrypt.hash(
+            dadosUsuario.senha,
+            SALT_ROUNDS
+          );
+        }
+
+        if (Object.keys(camposUsuario).length > 0) {
+          await Usuario.findByIdAndUpdate(
+            professorAtual.usuarioId,
+            camposUsuario,
+            { runValidators: true }
+          );
+        }
+      }
+
+      // 4.3 Atualizar Professor
+      const camposProfessor = {};
+      if (dadosProfessor) {
+        const permitidos = ["nome", "sobrenome", "cpf", "cidade", "telefone"];
+        for (const campo of permitidos) {
+          if (dadosProfessor[campo] !== undefined) {
+            camposProfessor[campo] = dadosProfessor[campo];
+          }
+        }
+        if (dadosProfessor.dataNasc !== undefined) {
+          camposProfessor.dataNasc = new Date(dadosProfessor.dataNasc);
+        }
+      }
+
+      const urlFotoAntiga = professorAtual.urlFotoProfessor;
+      if (file?.path) {
+        camposProfessor.urlFotoProfessor = file.path;
+      }
+
+      let professorAtualizado;
+
+      if (Object.keys(camposProfessor).length > 0) {
+        professorAtualizado = await Professor.findByIdAndUpdate(
+          id,
+          { $set: camposProfessor },
+          { new: true, runValidators: true }
+        );
+
+        if (file?.path && professorAtualizado) {
+          fotoNovaVinculada = true;
+        }
+
+        if (professorAtualizado) {
+          await professorAtualizado.populate("usuarioId", "email tipoUser");
+        }
+      } else {
+        professorAtualizado = await Professor.findById(id).populate(
+          "usuarioId",
+          "email tipoUser"
+        );
+      }
+
+      if (file?.path && urlFotoAntiga && urlFotoAntiga !== file.path) {
+        await deletarArquivoAntigoPorUrl(urlFotoAntiga);
+      }
+
+      return professorAtualizado;
+
+    } catch (error) {
+      if (!fotoNovaVinculada) {
+        await limparArquivoCloudinary(file);
+      }
+
+      if (error instanceof AppError) throw error;
+
+      throw new AppError(
+        `Erro ao atualizar professor: ${error.message}`,
+        400
+      );
     }
-    return professorAtualizado;
   }
 
 
-  // 5. DELETE - Método para excluir um professor
+  // 5. DELETE
   async deletar(id) {
-    const professor = await Professor.findOne({ _id: id });
-
-    if (!professor) {
-      throw new Error("Professor não encontrado para a exclusão.");
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError("ID de professor inválido.", 400);
     }
+
+    const professor = await Professor.findById(id);
+    if (!professor) {
+      throw new AppError("Professor não encontrado para exclusão.", 404);
+    }
+
+    const possuiTurmas = await Turma.exists({
+      professorId: professor._id,
+    });
+
+    if (possuiTurmas) {
+      throw new AppError(
+        "Não é possível excluir um professor que possui turmas vinculadas.",
+        409
+      );
+    }
+
+    await Promise.all([
+      Professor.findByIdAndDelete(id),
+      Usuario.findByIdAndDelete(professor.usuarioId),
+    ]);
 
     if (professor.urlFotoProfessor) {
-      try {
-        const partes = professor.urlFotoProfessor.split('/');
-        const publicId = partes.slice(-3).join('/').split('.')[0];
-        await cloudinary.uploader.destroy(publicId);
-      } catch (cloudinaryError) {
-        console.error("Erro ao apagar a foto do professor no Cloudinary:", cloudinaryError);
-      }
-    }
-
-    await Professor.findByIdAndDelete(id);
-
-    await Usuario.findByIdAndDelete(professor.usuarioId);
-
-    return { mensagem: "Professor e credenciais de acesso excluídos com sucesso." };
-  }
-  
-
-  // METODO PARA BUSCAR A TURMA DO PROFESSOR
-  async buscarTurmaDoProfessor(usuarioId) {
-    const professor = await Professor.findOne({ usuarioId });
-    if (!professor) {
-      throw new Error("Professor não encontrado no sistema.");
-    }
-
-    const turma = await Turma.findOne({ professorId: professor._id });
-
-    if (!turma) {
-      return {
-        nome: "Sem Turma",
-        letra: "",
-        totalAlunos: 0,
-        totalTarefas: 0,
-        percentualConcluidas: 0,
-        tarefasPendentes: 0
-      };
-    }
-
-    const totalAlunos = await Aluno.countDocuments({ turmaId: turma._id });
-
-    const partes = turma.nome.trim().split(" ");
-    let nomePrincipal = turma.nome;
-    let letra = "";
-
-    if (partes.length > 1) {
-      const ultimaParte = partes[partes.length - 1];
-      if (ultimaParte.length <= 2) {
-        letra = ultimaParte;
-        nomePrincipal = partes.slice(0, -1).join(" ");
-      }
+      await deletarArquivoAntigoPorUrl(professor.urlFotoProfessor);
     }
 
     return {
-      nome: nomePrincipal,
-      letra: letra,
-      totalAlunos: totalAlunos,
-      totalTarefas: 0,
-      percentualConcluidas: 0,
-      tarefasPendentes: 0
+      mensagem: "Professor e credenciais de acesso excluídos com sucesso.",
     };
   }
 }

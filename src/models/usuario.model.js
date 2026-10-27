@@ -7,11 +7,7 @@ const usuarioSchema = new mongoose.Schema(
       required: [true, "O email é obrigatório"],
       unique: true,
       lowercase: true,
-      trim: true,
-      match: [
-        /.+\@.+\..+/,
-        "Por favor, insira um email válido",
-      ],
+      trim: true
     },
     senha: {
       type: String,
@@ -20,7 +16,7 @@ const usuarioSchema = new mongoose.Schema(
     },
     tipoUser: {
       type: String,
-      enum: ["professor", "aluno"],
+      enum: ["professor", "aluno", "admin"],
       required: true,
     },
   },

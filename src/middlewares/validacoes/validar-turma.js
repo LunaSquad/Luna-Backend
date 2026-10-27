@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { nomeSchema } from "./schemas-base.js";
-import { responderErroValidacao } from "./helpers/responder-erro-validacao.js";
+import { nomeSchema } from "../schemas-base.js";
+import { responderErroValidacao } from "../helpers/responder-erro-validacao.js";
 
 const dadosTurmaSchema = z.object({
   nome: nomeSchema,
