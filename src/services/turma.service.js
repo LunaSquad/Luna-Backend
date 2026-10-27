@@ -1,116 +1,208 @@
-import Turma from '../models/turma.model.js';
-import Professor from '../models/professor.model.js';
-import Aluno from '../models/aluno.model.js';
+import mongoose from "mongoose";
+import Turma from "../models/turma.model.js";
+import Professor from "../models/professor.model.js";
+import Aluno from "../models/aluno.model.js";
+import { AppError } from "../middlewares/helpers/app-error.js";
 
-class TurmaService {
-
-  // 1. CREATE - Método para registrar uma nova turma
-  async registrar(dadosTurma) {
-    try {
-      const professorValido = await Professor.findOne({
-        _id: dadosTurma.professorId,
-      });
-
-      if (!professorValido) {
-        throw new Error("O professor selecionado não foi encontrado.");
-      }
-
-      const novaTurma = new Turma({
-        nome: dadosTurma.nome,
-        professorId: dadosTurma.professorId
-      });
-      const turmaSalva = await novaTurma.save();
-
-      if (dadosTurma.alunosEmails && dadosTurma.alunosEmails.length > 0) {
-        await Aluno.updateMany(
-          { email: { $in: dadosTurma.alunosEmails } },
-          { $set: { turmaId: turmaSalva._id } }
-        );
-      }
-      return turmaSalva;
-
-    } catch (error) {
-      throw new Error(`Erro ao registrar a turma: ${error.message}`);
-    }
-
+// Valida o ID e define quais turmas o usuário pode acessar.
+function validarAcesso({ tipoUser, professorId } = {}) {
+  if (tipoUser !== "admin") {
+    return {};
   }
 
+  if (tipoUser !== "professor") {
+    throw new AppError("Usuário sem permissão para acessar turmas.", 403);
+  }
 
-  // 2. READ ALL - Método para listar todas as turmas
-  async listarTodas(escolaId) {
-    const turmas = await Turma.find()
-      .populate("professorId", "nome sobrenome email")
+  if (!professorId || !mongoose.Types.ObjectId.isValid(professorId)) {
+    throw new AppError("ID do professor inválido.", 403);
+  }
+
+  return { professorId };
+}
+
+function validarId(id) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new AppError("ID de turma inválido.", 400);
+  }
+}
+
+class TurmaService {
+  // 1. CREATE
+  async registrar({ nome, tipoUser, professorId } = {}) {
+    if (tipoUser !== "professor") {
+      throw new AppError("Apenas professores podem criar turmas.", 403);
+    }
+
+    if (typeof nome !== "string" || !nome.trim()) {
+      throw new AppError("O nome da turma é obrigatório.", 400);
+    }
+
+    if (!professorId || !mongoose.Types.ObjectId.isValid(professorId)) {
+      throw new AppError("ID do professor inválido.", 400);
+    }
+
+    const professorExiste = await Professor.exists({
+      _id: professorId,
+    });
+
+    if (!professorExiste) {
+      throw new AppError("Professor não encontrado.", 404);
+    }
+
+    try {
+      return await Turma.create({
+        nome: nome.trim(),
+        professorId,
+      });
+    } catch (error) {
+      if (error.code === 11000) {
+        throw new AppError(
+          "Não foi possível gerar um código de convite único. Tente novamente.",
+          409
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  // 2. READ ALL
+  // Administrador lista todas; professor lista somente as próprias.
+  async listarTodas(acesso) {
+    const filtro = validarAcesso(acesso);
+
+    const turmas = await Turma.find(filtro)
+      .populate("professorId", "nome sobrenome")
       .lean();
 
-    const turmasComDados = await Promise.all(
+    return Promise.all(
       turmas.map(async (turma) => {
-        const alunos = await Aluno.find({ turmaId: turma._id }, '_id');
-        const ids = alunos.map(a => a._id);
+        const totalAlunos = await Aluno.countDocuments({
+          turmaId: turma._id,
+        });
 
         return {
           ...turma,
-          alunosIds: ids,
-          totalAlunos: ids.length
+          totalAlunos,
         };
       })
     );
-
-    return turmasComDados;
   }
 
+  // 3. READ ONE
+  async buscarPorId(id, acesso) {
+    validarId(id);
 
-  // 3. READ ONE - Método para buscar uma turma por ID
-  async buscarPorId(id) {
-    const turma = await Turma.findOne({ _id: id })
-      .populate("professorId", "nome sobrenome");
+    const filtro = {
+      _id: id,
+      ...validarAcesso(acesso),
+    };
+
+    const turma = await Turma.findOne(filtro)
+      .populate("professorId", "nome sobrenome")
+      .lean();
 
     if (!turma) {
-      throw new Error("Turma não encontrada.");
+      throw new AppError(
+        "Turma não encontrada ou você não tem permissão para acessá-la.",
+        404
+      );
     }
-    return turma;
+
+    const alunos = await Aluno.find({
+      turmaId: turma._id,
+    })
+      .select("_id nome sobrenome")
+      .lean();
+
+    return {
+      ...turma,
+      alunos,
+      totalAlunos: alunos.length,
+    };
   }
 
+  // 4. UPDATE
+  // Permite alterar somente o nome da turma.
+  async atualizar(id, { nome } = {}, acesso) {
+    validarId(id);
 
-  // 4. UPDATE - Método para atualizar os dados da turma
-  async atualizar(id, dadosAtualizados) {
-    const turmaAtualizada = await Turma.findOneAndUpdate(
-      { _id: id },
-      { nome: dadosAtualizados.nome, professorId: dadosAtualizados.professorId },
-      { new: true }
-    );
-
-    if (!turmaAtualizada) throw new Error("Turma não encontrada.");
-
-    if (dadosAtualizados.alunosIds) {
-      await Aluno.updateMany({ turmaId: id }, { $set: { turmaId: null } });
-
-      if (dadosAtualizados.alunosIds.length > 0) {
-        await Aluno.updateMany(
-          { _id: { $in: dadosAtualizados.alunosIds } },
-          { $set: { turmaId: id } }
-        );
-      }
+    if (typeof nome !== "string" || !nome.trim()) {
+      throw new AppError("O nome da turma é obrigatório.", 400);
     }
+
+    const filtro = {
+      _id: id,
+      ...validarAcesso(acesso),
+    };
+
+    const turmaAtualizada = await Turma.findOneAndUpdate(
+      filtro,
+      { $set: { nome: nome.trim() } },
+      { new: true, runValidators: true }
+    ).populate("professorId", "nome sobrenome");
+
+    if (!turmaAtualizada) {
+      throw new AppError(
+        "Turma não encontrada ou você não tem permissão para atualizá-la.",
+        404
+      );
+    }
+
     return turmaAtualizada;
   }
 
+  // 5. DELETE
+  // Exige confirmação explícita quando existem alunos vinculados.
+  async deletar(
+    id,
+    acesso,
+    { confirmarDesvinculacao = false } = {}
+  ) {
+    validarId(id);
 
-  // 5. DELETE - Método para excluir uma turma
-  async deletar(id) {
-    const turma = await Turma.findOne({ _id: id });
+    const filtro = {
+      _id: id,
+      ...validarAcesso(acesso),
+    };
+
+    const turma = await Turma.findOne(filtro);
 
     if (!turma) {
-      throw new Error("Turma não encontrada para a exclusão.");
+      throw new AppError(
+        "Turma não encontrada ou você não tem permissão para excluí-la.",
+        404
+      );
     }
 
-    await Aluno.updateMany(
-      { turmaId: id },
-      { $set: { turmaId: null } }
-    );
+    const totalAlunos = await Aluno.countDocuments({
+      turmaId: turma._id,
+    });
 
-    await Turma.findByIdAndDelete(id);
+    if (totalAlunos > 0 && !confirmarDesvinculacao) {
+      throw new AppError(
+        `Esta turma possui ${totalAlunos} aluno(s) vinculado(s). Confirme a desvinculação antes de excluí-la.`,
+        409
+      );
+    }
 
-    return { mensagem: "Turma excluída e alunos desvinculados com sucesso." };
+    if (totalAlunos > 0) {
+      await Aluno.updateMany(
+        { turmaId: turma._id },
+        { $set: { turmaId: null } }
+      );
+    }
+
+    await Turma.findByIdAndDelete(turma._id);
+
+    return {
+      mensagem:
+        totalAlunos > 0
+          ? "Turma excluída e alunos desvinculados com sucesso."
+          : "Turma excluída com sucesso.",
+      alunosDesvinculados: totalAlunos,
+    };
   }
 }
 
