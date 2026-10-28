@@ -20,10 +20,9 @@ const questaoSchema = new mongoose.Schema(
     respostaAluno: {
       type: String,
       default: null,
-      trim: true
+      trim: true,
     },
   },
-  { _id: false }
 );
 
 // Sub-schema para cada atividade (Atividade 1, Atividade 2...)
@@ -44,7 +43,6 @@ const itemAtividadeSchema = new mongoose.Schema(
       default: [],
     },
   },
-  { _id: false }
 );
 
 // Atividade
@@ -60,6 +58,12 @@ const atividadeSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Professor",
       required: [true, "A atividade deve estar vinculada a um professor"],
+      index: true,
+    },
+    turmaId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Turma",
+      required: [true, "A atividade deve estar vinculada a uma turma"],
       index: true,
     },
     materiaId: {
@@ -81,7 +85,7 @@ const atividadeSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pendente", "andamento", "concluido", "expirada"],
+      enum: ["pendente", "entregue", "corrigida"],
       default: "pendente",
       required: true,
     },
@@ -89,15 +93,20 @@ const atividadeSchema = new mongoose.Schema(
       type: Date,
       required: [true, "A data de fechamento da atividade é obrigatória"],
     },
+    dataEntrega: {
+      type: Date,
+      default: null, // Preenchido quando o aluno envia pelo app mobile
+    },
     atividades: {
       type: [itemAtividadeSchema],
       required: [true, "A lista de atividades geradas é obrigatória"],
       default: [],
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
+// O aluno só pode ter uma atividade por plano de aula
 atividadeSchema.index({ alunoId: 1, planoDeAulaId: 1 }, { unique: true });
 
-export default mongoose.model("Atividade", atividadeSchema);
+export default mongoose.model("Atividade", atividadeSchema, "atividades");
