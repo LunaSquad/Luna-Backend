@@ -45,7 +45,7 @@ const planoDeAulaSchema = new mongoose.Schema(
     },
     urlPlanoDeAula: {
       type: String,
-      default: "https://caminho-para-plano-de-aula-padrao.com/plano.pdf",
+      default: null,
     },
   },
   { timestamps: true }
