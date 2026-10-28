@@ -4,123 +4,79 @@ import Professor from "../models/professor.model.js";
 import Aluno from "../models/aluno.model.js";
 import { AppError } from "../middlewares/helpers/app-error.js";
 
-// Valida o ID e define quais turmas o usuário pode acessar.
-function validarAcesso({ tipoUser, professorId } = {}) {
-  if (tipoUser !== "admin") {
-    return {};
-  }
-
-  if (tipoUser !== "professor") {
-    throw new AppError("Usuário sem permissão para acessar turmas.", 403);
-  }
-
-  if (!professorId || !mongoose.Types.ObjectId.isValid(professorId)) {
-    throw new AppError("ID do professor inválido.", 403);
-  }
-
-  return { professorId };
-}
-
-function validarId(id) {
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    throw new AppError("ID de turma inválido.", 400);
-  }
-}
-
 class TurmaService {
   // 1. CREATE
-  async registrar({ nome, tipoUser, professorId } = {}) {
-    if (tipoUser !== "professor") {
-      throw new AppError("Apenas professores podem criar turmas.", 403);
-    }
-
-    if (typeof nome !== "string" || !nome.trim()) {
-      throw new AppError("O nome da turma é obrigatório.", 400);
-    }
-
-    if (!professorId || !mongoose.Types.ObjectId.isValid(professorId)) {
-      throw new AppError("ID do professor inválido.", 400);
-    }
-
-    const professorExiste = await Professor.exists({
-      _id: professorId,
-    });
-
-    if (!professorExiste) {
-      throw new AppError("Professor não encontrado.", 404);
+  async registrar(id, { dadosTurma } = {}) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError("ID de professor inválido.", 400);
     }
 
     try {
-      return await Turma.create({
-        nome: nome.trim(),
-        professorId,
+      const nomeEmUso = await Turma.exists({
+        nome: dadosTurma.nome,
+        professorId: id,
       });
-    } catch (error) {
-      if (error.code === 11000) {
-        throw new AppError(
-          "Não foi possível gerar um código de convite único. Tente novamente.",
-          409
-        );
+
+      if (nomeEmUso) {
+        throw new AppError("Este nome já está em uso", 409);
       }
 
-      throw error;
+      const novaTurma = await Turma.create({
+        nome: dadosTurma.nome,
+        professorId: id,
+      });
+
+      return novaTurma;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+
+      throw new AppError(`Erro ao registrar turma : ${error.message}`, 400);
     }
   }
 
   // 2. READ ALL
-  // Administrador lista todas; professor lista somente as próprias.
-  async listarTodas(acesso) {
-    const filtro = validarAcesso(acesso);
+  async listarTodas(id) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError("ID de professor inválido.", 400);
+    }
 
-    const turmas = await Turma.find(filtro)
-      .populate("professorId", "nome sobrenome")
-      .lean();
+    const turmas = await Turma.find({
+      professorId: id,
+    });
 
-    return Promise.all(
-      turmas.map(async (turma) => {
-        const totalAlunos = await Aluno.countDocuments({
-          turmaId: turma._id,
-        });
-
-        return {
-          ...turma,
-          totalAlunos,
-        };
-      })
-    );
+    return turmas;
   }
 
   // 3. READ ONE
-  async buscarPorId(id, acesso) {
-    validarId(id);
-
-    const filtro = {
-      _id: id,
-      ...validarAcesso(acesso),
-    };
-
-    const turma = await Turma.findOne(filtro)
-      .populate("professorId", "nome sobrenome")
-      .lean();
-
-    if (!turma) {
-      throw new AppError(
-        "Turma não encontrada ou você não tem permissão para acessá-la.",
-        404
-      );
+  async buscarPorId(id, turmaId) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError("ID de professor inválido.", 400);
     }
 
-    const alunos = await Aluno.find({
-      turmaId: turma._id,
-    })
-      .select("_id nome sobrenome")
-      .lean();
+    if (!mongoose.Types.ObjectId.isValid(turmaId)) {
+      throw new AppError("ID da turma inválido.", 400);
+    }
 
-    return {
-      ...turma,
-      alunos,
-      totalAlunos: alunos.length,
-    };
+    try {
+      const turma = await Turma.findOne({
+        _id: turmaId,
+        professorId: id,
+      }).lean();
+
+      if (!turma) {
+        throw new AppError("Turma não encontrada.", 404);
+      }
+
+      const alunos = await Aluno.find({ turmaId })
+        .select("nome urlFotoAluno hiperfoco")
+        .lean();
+
+      return { ...turma, alunos };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+
+      throw new AppError(`Erro ao buscar turma: ${error.message}`, 500);
+    }
   }
 
   // 4. UPDATE
@@ -140,13 +96,13 @@ class TurmaService {
     const turmaAtualizada = await Turma.findOneAndUpdate(
       filtro,
       { $set: { nome: nome.trim() } },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).populate("professorId", "nome sobrenome");
 
     if (!turmaAtualizada) {
       throw new AppError(
         "Turma não encontrada ou você não tem permissão para atualizá-la.",
-        404
+        404,
       );
     }
 
@@ -155,11 +111,7 @@ class TurmaService {
 
   // 5. DELETE
   // Exige confirmação explícita quando existem alunos vinculados.
-  async deletar(
-    id,
-    acesso,
-    { confirmarDesvinculacao = false } = {}
-  ) {
+  async deletar(id, acesso, { confirmarDesvinculacao = false } = {}) {
     validarId(id);
 
     const filtro = {
@@ -172,7 +124,7 @@ class TurmaService {
     if (!turma) {
       throw new AppError(
         "Turma não encontrada ou você não tem permissão para excluí-la.",
-        404
+        404,
       );
     }
 
@@ -183,14 +135,14 @@ class TurmaService {
     if (totalAlunos > 0 && !confirmarDesvinculacao) {
       throw new AppError(
         `Esta turma possui ${totalAlunos} aluno(s) vinculado(s). Confirme a desvinculação antes de excluí-la.`,
-        409
+        409,
       );
     }
 
     if (totalAlunos > 0) {
       await Aluno.updateMany(
         { turmaId: turma._id },
-        { $set: { turmaId: null } }
+        { $set: { turmaId: null } },
       );
     }
 
