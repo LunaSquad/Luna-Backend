@@ -1,83 +1,89 @@
 import TurmaService from "../services/turma.service.js";
 
 class TurmaController {
-
   // 1. CREATE (POST /turmas)
   async criar(req, res) {
     try {
-      const dadosTurma = req.body;
-      const novaTurma = await TurmaService.registrar(dadosTurma);
+      const novaTurma = await TurmaService.registrar(
+        req.usuario.professorId,
+        req.body
+      );
 
       const linkConvite = `luna://app/convite?codigo=${novaTurma.codigoConvite}&turmaId=${novaTurma._id}`;
 
       return res.status(201).json({
         mensagem: "Turma registrada com sucesso!",
         turma: novaTurma,
-        linkConvite: linkConvite
+        linkConvite,
       });
-
     } catch (error) {
-      return res.status(400).json({ erro: error.message });
+      return res.status(error.statusCode ?? 500).json({
+        erro: error.message,
+      });
     }
   }
 
-  // 2. READ ALL (GET /turmas)
+  // 2. READ ALL (GET /turmas?formato=simples | completo)
   async listar(req, res) {
     try {
-      const turmas = await TurmaService.listarTodas();
+      const { formato = "completo" } = req.query;
+      const turmas = await TurmaService.listarTodas(
+        req.usuario.professorId,
+        formato
+      );
       return res.status(200).json(turmas);
-
     } catch (error) {
-      return res.status(500).json({ erro: "Erro interno ao listar os turmas." });
+      return res.status(error.statusCode ?? 500).json({
+        erro: error.statusCode
+          ? error.message
+          : "Erro interno ao listar as turmas.",
+      });
     }
   }
 
   // 3. READ ONE (GET /turmas/:id)
   async buscarPorId(req, res) {
     try {
-      const { id } = req.params;
-      const turma = await TurmaService.buscarPorId(id);
-
-      const linkConvite = `luna://app/convite?codigo=${turma.codigoConvite}&turmaId=${turma._id}`;
-
-      return res.status(200).json({
-        ...turma.toObject(),
-        linkConvite: linkConvite
-      });
-
+      const turma = await TurmaService.buscarPorId(
+        req.params.id,
+        req.usuario.professorId
+      );
+      return res.status(200).json(turma);
     } catch (error) {
-      return res.status(404).json({ erro: "Turma não encontrada." });
+      return res.status(error.statusCode ?? 500).json({
+        erro: error.message,
+      });
     }
   }
 
   // 4. UPDATE (PUT /turmas/:id)
   async atualizar(req, res) {
     try {
-      const { id } = req.params;
-      const dadosAtualizados = req.body;
-
-      const turmaAtualizada = await TurmaService.atualizar(id, dadosAtualizados);
-
-      return res.status(200).json({
-        mensagem: "Os dados da turma foram atualizados com sucesso!",
-        turma: turmaAtualizada
-      });
-
+      const turmaAtualizada = await TurmaService.atualizar(
+        req.params.id,
+        req.usuario.professorId,
+        req.body
+      );
+      return res.status(200).json(turmaAtualizada);
     } catch (error) {
-      return res.status(400).json({ erro: error.message });
+      return res.status(error.statusCode ?? 500).json({
+        erro: error.message,
+      });
     }
   }
 
   // 5. DELETE (DELETE /turmas/:id)
   async deletar(req, res) {
     try {
-      const { id } = req.params;
-      const resultado = await TurmaService.deletar(id);
-
+      const resultado = await TurmaService.deletar(
+        req.params.id,
+        req.usuario.professorId
+      );
       return res.status(200).json(resultado);
-
     } catch (error) {
-      return res.status(400).json({ erro: error.message });
+      return res.status(error.statusCode ?? 500).json({
+        erro: error.message,
+      });
     }
   }
 }
