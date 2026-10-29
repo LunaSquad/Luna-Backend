@@ -39,6 +39,30 @@ export const telefoneSchema = z
   .min(1, "O telefone é obrigatório.")
   .regex(/^\d{10,11}$/, "O telefone deve conter entre 10 e 11 números.",);
 
+export const criarDataSchema = (nomeCampo = "data") =>
+  z
+    .string()
+    .trim()
+    .regex(
+      /^\d{4}-\d{2}-\d{2}$/,
+      `Informe a ${nomeCampo} no formato AAAA-MM-DD.`
+    )
+    .refine((valor) => {
+      const data = new Date(`${valor}T00:00:00.000Z`);
+      return (
+        !Number.isNaN(data.getTime()) &&
+        data.toISOString().slice(0, 10) === valor
+      );
+    }, `A ${nomeCampo} informada é inválida.`);
+
+export const horarioSchema = z
+  .string()
+  .trim()
+  .regex(
+    /^([01]\d|2[0-3]):([0-5]\d)$/,
+    "Informe o horário no formato HH:MM (ex: 18:00)."
+  );
+
 export const dataNascSchema = z.iso
   .datetime({ error: "A data de nascimento deve estar no formato ISO válido." })
   .refine(
