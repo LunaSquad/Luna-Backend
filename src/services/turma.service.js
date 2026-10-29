@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Turma from "../models/turma.model.js";
 import PlanoDeAula from "../models/plano-de-aula.model.js";
+import Atividade from "../models/atividade.model.js";
 import Aluno from "../models/aluno.model.js";
 import { AppError } from "../middlewares/helpers/app-error.js";
 
