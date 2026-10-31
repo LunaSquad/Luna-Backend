@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import Materia from "../models/materia.model.js";
-import AppError from "../middlewares/helpers/AppError.js";
+import { AppError } from "../middlewares/helpers/app-error.js";
 
 class MateriaService {
   // 1. READ ALL

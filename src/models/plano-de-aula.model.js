@@ -27,13 +27,13 @@ const planoDeAulaSchema = new mongoose.Schema(
     },
     titulo: {
       type: String,
-      required: [true, "O título do plano de aula é obrigatório"],
       trim: true,
+      default: null,
     },
     descricao: {
       type: String,
-      required: [true, "A descrição do plano de aula é obrigatória"],
       trim: true,
+      default: null,
     },
     dataAula: {
       type: Date,

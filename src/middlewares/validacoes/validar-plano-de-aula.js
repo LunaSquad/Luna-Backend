@@ -1,73 +1,80 @@
 import { z } from "zod";
-import { objectIdSchema } from "../schemas-base.js";
+import {
+  objectIdSchema,
+  criarDataSchema,
+  horarioSchema,
+} from "../schemas-base.js";
 import { responderErroValidacao } from "../helpers/responder-erro-validacao.js";
 import { converterCamposJSON } from "../helpers/converter-campos-json.js";
 import { limparArquivoCloudinary } from "../helpers/limpar-cloudinary.js";
 
 const tipoConteudoSchema = z.preprocess(
-  (valor) =>
-    typeof valor === "string"
-      ? valor.trim().toLowerCase()
-      : valor,
+  (valor) => (typeof valor === "string" ? valor.trim().toLowerCase() : valor),
   z.enum(["manual", "anexo"], {
-    error: "Tipo de conteúdo inválido. Escolha Manual ou Anexo.",
-  }),
+    error: "Tipo de conteúdo inválido. Escolha manual ou anexo.",
+  })
 );
 
-const dataAulaSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data da aula no formato AAAA-MM-DD.")
-  .refine((valor) => {
-    const data = new Date(`${valor}T00:00:00.000Z`);
-
-    return (
-      !Number.isNaN(data.getTime()) &&
-      data.toISOString().slice(0, 10) === valor
-    );
-  }, "Data da aula inválida.");
-
-
-const dataFechamentoSchema = z.iso.datetime({
-  offset: true,
-  error: "Informe uma data de fechamento válida no formato ISO.",
-});
-
-
-const dadosPlanoDeAulaSchema = z.object({
-  materiaId: objectIdSchema,
-  turmaId: objectIdSchema,
-  tipoConteudo: tipoConteudoSchema,
-  titulo: z
-    .string()
-    .trim()
-    .min(3, "O título deve ter no mínimo 3 caracteres.")
-    .max(100, "O título deve ter no máximo 100 caracteres."),
-  descricaoConteudo: z
-    .string()
-    .trim()
-    .min(5, "A descrição deve ter no mínimo 5 caracteres.")
-    .max(255, "A descrição deve ter no máximo 255 caracteres."),
-  dataAula: dataAulaSchema,
-  dataFechamento: dataFechamentoSchema,
-}).strict();
+const dadosPlanoDeAulaBaseSchema = z
+  .object({
+    materiaId: objectIdSchema,
+    turmaId: objectIdSchema,
+    tipoConteudo: tipoConteudoSchema,
+    titulo: z
+      .string()
+      .trim()
+      .min(3, "O título deve ter no mínimo 3 caracteres.")
+      .max(100, "O título deve ter no máximo 100 caracteres.")
+      .optional(),
+    descricao: z
+      .string()
+      .trim()
+      .min(5, "A descrição deve ter no mínimo 5 caracteres.")
+      .max(1000, "A descrição deve ter no máximo 1000 caracteres.")
+      .optional(),
+    dataAula: criarDataSchema("data da aula"),
+    dataFechamento: criarDataSchema("data de fechamento"),
+    horarioFechamento: horarioSchema,
+  })
+  .strict();
 
 // Schema de Cadastro
-const registroPlanoDeAulaSchema = z.object({
-  dadosPlanoDeAula: dadosPlanoDeAulaSchema,
-}).strict();
+const registroPlanoDeAulaSchema = z
+  .object({
+    dadosPlanoDeAula: dadosPlanoDeAulaBaseSchema
+      .superRefine((dados, ctx) => {
+        if (dados.tipoConteudo === "manual") {
+          if (!dados.titulo) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "O título é obrigatório no modo manual.",
+              path: ["titulo"],
+            });
+          }
+          if (!dados.descricao) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "A descrição é obrigatória no modo manual.",
+              path: ["descricao"],
+            });
+          }
+        }
 
-// Schema de Atualização
-const dadosPlanoDeAulaUpdateSchema = dadosPlanoDeAulaSchema.partial().refine(
-  (dados) => Object.values(dados).some((valor) => valor !== undefined),
-  "Informe pelo menos um dado do plano de aula.",
-);
-
-const updatePlanoDeAulaSchema = z.object({
-  dadosPlanoDeAula: dadosPlanoDeAulaUpdateSchema.optional(),
-}).strict();
-
-
-// --- MIDDLEWARES ---
+        if (dados.dataFechamento < dados.dataAula) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "A data de fechamento não pode ser anterior à data da aula.",
+            path: ["dataFechamento"],
+          });
+        }
+      })
+      .transform(({ horarioFechamento, dataFechamento, ...resto }) => ({
+        ...resto,
+        dataFechamento: `${dataFechamento}T${horarioFechamento}:00.000-03:00`,
+      })),
+  })
+  .strict();
 
 // Middleware de Cadastro
 export const validarCadastroPlanoDeAula = async (req, res, next) => {
@@ -75,47 +82,23 @@ export const validarCadastroPlanoDeAula = async (req, res, next) => {
     converterCamposJSON(req.body, ["dadosPlanoDeAula"]);
 
     const dadosValidados = registroPlanoDeAulaSchema.parse(req.body);
+    const { tipoConteudo } = dadosValidados.dadosPlanoDeAula;
 
-    if (dadosValidados.dadosPlanoDeAula.tipoConteudo === "anexo" && !req.file) {
+    if (tipoConteudo === "anexo" && !req.file) {
       return res.status(400).json({
-        erro: "Envie o arquivo do plano de aula.",
+        erro: "Envie o arquivo do plano de aula quando o tipo for anexo.",
       });
     }
 
+    if (tipoConteudo === "manual" && req.file) {
+      await limparArquivoCloudinary(req.file);
+      req.file = undefined;
+    }
+
     req.body = dadosValidados;
-
     return next();
-
   } catch (error) {
     await limparArquivoCloudinary(req.file);
-
     return responderErroValidacao(res, error, "no cadastro do plano de aula");
-  }
-};
-
-// Middleware de Atualização
-export const validarUpdatePlanoDeAula = async (req, res, next) => {
-  try {
-    converterCamposJSON(req.body, ["dadosPlanoDeAula"]);
-
-    const dadosValidados = updatePlanoDeAulaSchema.parse(req.body);
-
-    const temDados = Boolean(dadosValidados.dadosPlanoDeAula);
-    const temNovoArquivo = Boolean(req.file);
-
-    if (!temDados && !temNovoArquivo) {
-      return res.status(400).json({
-        erro: "Informe pelo menos um dado ou envie um novo arquivo para atualizar.",
-      });
-    }
-
-    req.body = dadosValidados;
-
-    return next();
-
-  } catch (error) {
-    await limparArquivoCloudinary(req.file);
-
-    return responderErroValidacao(res, error, "na atualização do plano de aula");
   }
 };
