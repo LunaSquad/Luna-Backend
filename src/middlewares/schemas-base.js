@@ -64,7 +64,7 @@ export const horarioSchema = z
   );
 
 export const dataNascSchema = z.iso
-  .datetime({ error: "A data de nascimento deve estar no formato ISO válido." })
+  .date({ error: "A data de nascimento deve estar no formato ISO válido." })
   .refine(
     (data) => new Date(data) <= new Date(),
     "A data de nascimento não pode estar no futuro."

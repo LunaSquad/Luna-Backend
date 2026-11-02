@@ -54,14 +54,17 @@ class TurmaService {
 
       const turmasCompletas = await Promise.all(
         turmas.map(async (turma) => {
-          const [quantidadeAlunos, planosDaTurma, atividadesDaTurma] =
+          const [quantidadeAlunos, planosDaTurma, entregasDaTurma] =
             await Promise.all([
               Aluno.countDocuments({ turmaId: turma._id }),
               PlanoDeAula.find({ turmaId: turma._id, professorId: id })
                 .select("_id")
                 .lean(),
-              Atividade.find({ turmaId: turma._id })
-                .select("planoDeAulaId status")
+              Atividade.find({
+                turmaID: String(turma._id),
+                "respostas.0": { $exists: true },
+              })
+                .select("planoID planoOrigemID alunoID status")
                 .lean(),
             ]);
 
@@ -69,18 +72,17 @@ class TurmaService {
           let pendentes = 0;
 
           for (const plano of planosDaTurma) {
-            const atividadesDoPlano = atividadesDaTurma.filter(
-              (ativ) => String(ativ.planoDeAulaId) === String(plano._id),
+            const entregasDoPlano = entregasDaTurma.filter(
+              (ativ) =>
+                String(ativ.planoID || ativ.planoOrigemID) === String(plano._id),
             );
 
-            const todosFizeram =
-              atividadesDoPlano.length > 0 &&
-              atividadesDoPlano.every(
-                (ativ) =>
-                  ativ.status === "entregue" || ativ.status === "corrigida",
-              );
+            const todosCorrigidos =
+              quantidadeAlunos > 0 &&
+              entregasDoPlano.length >= quantidadeAlunos &&
+              entregasDoPlano.every((ativ) => ativ.status === "corrigida");
 
-            if (!todosFizeram) {
+            if (!todosCorrigidos) {
               pendentes++;
             }
           }
@@ -133,34 +135,45 @@ class TurmaService {
         throw new AppError("Turma não encontrada.", 404);
       }
 
-      const [alunos, planosDeAula, atividadesDaTurma] = await Promise.all([
+      const [alunos, planosDeAula, entregasDaTurma] = await Promise.all([
         Aluno.find({ turmaId })
-          .select("_id nome cpf urlFotoAluno hiperfoco")
+          .select("_id usuarioId nome cpf urlFotoAluno hiperfoco")
           .lean(),
         PlanoDeAula.find({ turmaId, professorId })
           .populate("materiaId", "nome")
           .sort({ dataAula: -1 })
           .lean(),
-        Atividade.find({ turmaId })
-          .select("alunoId planoDeAulaId status")
+        Atividade.find({
+          turmaID: String(turmaId),
+          "respostas.0": { $exists: true },
+        })
+          .select("alunoID planoID planoOrigemID status acertos totalQuestoes")
           .lean(),
       ]);
 
       const alunosComDesempenho = alunos.map((aluno) => {
-        const atividadesDoAluno = atividadesDaTurma.filter(
-          (ativ) => String(ativ.alunoId) === String(aluno._id),
+        const entregasDoAluno = entregasDaTurma.filter(
+          (ativ) =>
+            String(ativ.alunoID) === String(aluno._id) ||
+            String(ativ.alunoID) === String(aluno.usuarioId),
         );
 
-        const totalAluno = atividadesDoAluno.length;
-        const feitasAluno = atividadesDoAluno.filter(
-          (ativ) => ativ.status === "entregue" || ativ.status === "corrigida",
-        ).length;
+        const totalQuestoesRespondidas = entregasDoAluno.reduce(
+          (acc, ativ) => acc + (ativ.totalQuestoes || 0),
+          0,
+        );
+        const totalAcertos = entregasDoAluno.reduce(
+          (acc, ativ) => acc + (ativ.acertos || 0),
+          0,
+        );
 
         const desempenho =
-          totalAluno > 0 ? Math.round((feitasAluno / totalAluno) * 100) : 0;
+          totalQuestoesRespondidas > 0
+            ? Math.round((totalAcertos / totalQuestoesRespondidas) * 100)
+            : 0;
 
         let situacao = "Sem atividades";
-        if (totalAluno > 0) {
+        if (entregasDoAluno.length > 0) {
           if (desempenho >= 80) {
             situacao = "Excelente";
           } else if (desempenho >= 50) {
@@ -180,24 +193,23 @@ class TurmaService {
       let planosPendentes = 0;
 
       const planosComStatus = planosDeAula.map((plano) => {
-        const atividadesDoPlano = atividadesDaTurma.filter(
-          (ativ) => String(ativ.planoDeAulaId) === String(plano._id),
+        const entregasDoPlano = entregasDaTurma.filter(
+          (ativ) =>
+            String(ativ.planoID || ativ.planoOrigemID) === String(plano._id),
         );
 
-        // Só está 100% concluído se já gerou atividade e ninguém está "pendente"
-        const todosFizeram =
-          atividadesDoPlano.length > 0 &&
-          atividadesDoPlano.every(
-            (ativ) => ativ.status === "entregue" || ativ.status === "corrigida",
-          );
+        const todosCorrigidos =
+          alunos.length > 0 &&
+          entregasDoPlano.length >= alunos.length &&
+          entregasDoPlano.every((ativ) => ativ.status === "corrigida");
 
-        if (!todosFizeram) {
+        if (!todosCorrigidos) {
           planosPendentes++;
         }
 
         return {
           ...plano,
-          statusTurma: todosFizeram ? "concluida" : "pendente",
+          statusTurma: todosCorrigidos ? "concluida" : "pendente",
         };
       });
 
@@ -285,7 +297,7 @@ class TurmaService {
 
       await Promise.all([
         Aluno.updateMany({ turmaId }, { $set: { turmaId: null } }),
-        Atividade.deleteMany({ turmaId }),
+        Atividade.deleteMany({ turmaId: String(turmaId) }),
         PlanoDeAula.deleteMany({ turmaId }),
         Turma.deleteOne({ _id: turmaId, professorId }),
       ]);
