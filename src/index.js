@@ -9,6 +9,7 @@ import professorRoutes from "./routes/professor.routes.js";
 import materiaRoutes from "./routes/materia.routes.js";
 import turmaRoutes from "./routes/turma.routes.js";
 import planoDeAulaRoutes from "./routes/plano-de-aula.routes.js";
+import atividadeRoutes from "./routes/atividade.routes.js";
 
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 dotenv.config();
@@ -24,6 +25,7 @@ app.use("/", professorRoutes);
 app.use("/", materiaRoutes);
 app.use("/", turmaRoutes);
 app.use("/", planoDeAulaRoutes);
+app.use("/", atividadeRoutes);
 
 // Rota 404 padrão para endpoints inexistentes
 app.use((req, res) => {

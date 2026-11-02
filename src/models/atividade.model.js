@@ -1,13 +1,37 @@
 import mongoose from "mongoose";
 
-// Sub-schema para cada questão
+// Sub-schema para os tópicos da explicação teórica (gerado pela IA)
+const topicoExplicacaoSchema = new mongoose.Schema(
+  {
+    subtitulo: { type: String, trim: true, default: null },
+    textoAdaptado: { type: String, trim: true, default: null },
+    dicaVisual: { type: String, trim: true, default: null },
+  },
+  { _id: false },
+);
+
+// Sub-schema para os tópicos de exemplo prático (gerado pela IA)
+const topicoExemploSchema = new mongoose.Schema(
+  {
+    titulo: { type: String, trim: true, default: null },
+    passoAPasso: { type: String, trim: true, default: null },
+    conclusao: { type: String, trim: true, default: null },
+  },
+  { _id: false },
+);
+
+// Sub-schema para cada questão dentro de uma missão (gerado pela IA)
 const questaoSchema = new mongoose.Schema(
   {
+    tituloAtividade: { type: String, trim: true, default: null },
+    comandoAtividade: { type: String, trim: true, default: null },
+    tipo: { type: String, trim: true, default: "objetiva" },
     pergunta: {
       type: String,
       required: [true, "A pergunta da questão é obrigatória"],
       trim: true,
     },
+    dicaTDAH: { type: String, trim: true, default: null },
     respostaCorreta: {
       type: String,
       required: [true, "A resposta correta é obrigatória"],
@@ -17,20 +41,16 @@ const questaoSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
-    respostaAluno: {
-      type: String,
-      default: null,
-      trim: true,
-    },
   },
+  { _id: false },
 );
 
-// Sub-schema para cada atividade (Atividade 1, Atividade 2...)
+// Sub-schema para cada missão (Missão 1, Missão 2...)
 const itemAtividadeSchema = new mongoose.Schema(
   {
     titulo: {
       type: String,
-      required: [true, "O título do bloco de atividade é obrigatório"],
+      required: [true, "O título da missão é obrigatório"],
       trim: true,
     },
     conteudoAdaptado: {
@@ -43,70 +63,97 @@ const itemAtividadeSchema = new mongoose.Schema(
       default: [],
     },
   },
+  { _id: false },
 );
 
-// Atividade
+// Sub-schema para cada resposta enviada pelo aluno no mobile
+const respostaAlunoItemSchema = new mongoose.Schema(
+  {
+    numeroQuestao: { type: Number, required: true },
+    pergunta: { type: String, required: true, trim: true },
+    respostaAluno: { type: String, required: true, trim: true },
+    respostaCorreta: { type: String, required: true, trim: true },
+    acertou: { type: Boolean, required: true },
+    tipo: { type: String, trim: true, default: "objetiva" },
+  },
+  { _id: false },
+);
+
+// Schema principal da collection "atividades"
 const atividadeSchema = new mongoose.Schema(
   {
-    alunoId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Aluno",
-      required: [true, "A atividade deve estar vinculada a um aluno"],
-      index: true,
-    },
-    professorId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Professor",
-      required: [true, "A atividade deve estar vinculada a um professor"],
-      index: true,
-    },
-    turmaId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Turma",
-      required: [true, "A atividade deve estar vinculada a uma turma"],
-      index: true,
-    },
-    materiaId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Materia",
-      required: [true, "A atividade deve estar vinculada a uma matéria"],
-      index: true,
-    },
-    planoDeAulaId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "PlanoDeAula",
-      required: [true, "A atividade deve estar vinculada a um plano de aula"],
-      index: true,
-    },
-    titulo: {
+    // Identificadores (salvos como String pelo mobile)
+    planoOrigemID: {
       type: String,
-      required: [true, "O título da atividade é obrigatório"],
       trim: true,
+      default: null,
+      index: true,
     },
+    planoID: {
+      type: String,
+      trim: true,
+      default: null,
+      index: true,
+    },
+    alunoID: {
+      type: String,
+      required: [true, "O ID do aluno (alunoID) é obrigatório"],
+      trim: true,
+      index: true,
+    },
+    turmaID: {
+      type: String,
+      required: [true, "O ID da turma (turmaID) é obrigatório"],
+      trim: true,
+      index: true,
+    },
+    materiaID: {
+      type: String,
+      required: [true, "O ID da matéria (materiaID) é obrigatório"],
+      trim: true,
+      index: true,
+    },
+
+    // Campos do documento gerado pela IA
+    hiperfoco: { type: String, trim: true, default: null },
+    moldeUsado: { type: String, trim: true, default: null },
+    temaDetectado: { type: String, trim: true, default: null },
+    urlPlanoOriginal: { type: String, trim: true, default: null },
+    assetsVisuais: { type: [String], default: [] },
+    versaoCache: { type: String, trim: true, default: null },
+    tituloAdaptado: { type: String, trim: true, default: null },
+    temaOriginal: { type: String, trim: true, default: null },
+    disciplina: { type: String, trim: true, default: null },
+    explicacaoTeorica: { type: String, trim: true, default: null },
+    topicosExplicacao: { type: [topicoExplicacaoSchema], default: [] },
+    temExemplo: { type: Boolean, default: false },
+    exemploPratico: { type: String, trim: true, default: null },
+    topicosExemplo: { type: [topicoExemploSchema], default: [] },
+    atividades: { type: [itemAtividadeSchema], default: [] },
+    explicacaoAdaptada: { type: String, trim: true, default: null },
+
+    // Campos do documento de resposta do aluno (Mobile) e correção (Web)
+    titulo: { type: String, trim: true, default: null },
+    materia: { type: String, trim: true, default: null },
+    acertos: { type: Number, default: 0 },
+    totalQuestoes: { type: Number, default: 0 },
+    respostas: { type: [respostaAlunoItemSchema], default: [] },
     status: {
       type: String,
-      enum: ["pendente", "entregue", "corrigida"],
+      enum: ["pendente", "concluida", "entregue", "corrigida"],
       default: "pendente",
-      required: true,
     },
-    dataFechamento: {
+    comentarioProfessor: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    dataCorrecao: {
       type: Date,
-      required: [true, "A data de fechamento da atividade é obrigatória"],
-    },
-    dataEntrega: {
-      type: Date,
-      default: null, // Preenchido quando o aluno envia pelo app mobile
-    },
-    atividades: {
-      type: [itemAtividadeSchema],
-      required: [true, "A lista de atividades geradas é obrigatória"],
-      default: [],
+      default: null,
     },
   },
   { timestamps: true },
 );
-
-// O aluno só pode ter uma atividade por plano de aula
-atividadeSchema.index({ alunoId: 1, planoDeAulaId: 1 }, { unique: true });
 
 export default mongoose.model("Atividade", atividadeSchema, "atividades");
