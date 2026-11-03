@@ -152,19 +152,45 @@ O Docker Compose será responsável por:
 
 A API utiliza o MongoDB local do ambiente Docker, enquanto os uploads continuam sendo armazenados no Cloudinary.
 
-### 3. Verificar os containers
+### 3. Executar seed de demonstração (Opcional)
+
+Além do seed automático das matérias básicas, o projeto disponibiliza um seed de desenvolvimento com dados fictícios para facilitar os testes da API.
+
+Após iniciar os containers, execute:
+
+```bash
+pnpm compose:seed
+```
+
+Esse comando executa o script `scripts/seedDev.js` dentro do container da API, populando o MongoDB local com dados de demonstração, incluindo:
+
+- Professores e usuários de teste.
+- Turmas e alunos.
+- Matérias.
+- Planos de aula.
+- Atividades geradas pela IA e respostas de alunos.
+
+Ao finalizar, o script apresenta as credenciais das contas de demonstração disponíveis para acessar e testar a API pelo Swagger.
+
+**Observações:**
+- A execução é opcional.
+- O container da API precisa estar em execução.
+- Os dados são inseridos no MongoDB local do Docker.
+- O seed não substitui o seed automático das matérias básicas.
+
+### 4. Verificar os containers
 
 ```bash
 docker compose ps
 ```
 
-### 4. Consultar os logs
+### 5. Consultar os logs
 
 ```bash
 pnpm compose:logs
 ```
 
-### 5. Encerrar o ambiente
+### 6. Encerrar o ambiente
 
 ```bash
 pnpm compose:down

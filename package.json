@@ -12,6 +12,7 @@
     "compose:up": "docker compose up -d --build",
     "compose:down": "docker compose down",
     "compose:logs": "docker compose logs -f",
+    "compose:seed": "docker compose exec api node scripts/seedDev.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.js\" \"scripts/**/*.js\"",
