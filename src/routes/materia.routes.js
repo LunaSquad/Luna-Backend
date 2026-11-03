@@ -9,6 +9,11 @@ const routes = Router();
 routes.get("/materias", auth, somenteProfessor, MateriaController.listar);
 
 // 2. READ ONE
-routes.get("/materias/:id", auth, somenteProfessor, MateriaController.buscarPorId);
+routes.get(
+  "/materias/:id",
+  auth,
+  somenteProfessor,
+  MateriaController.buscarPorId
+);
 
 export default routes;

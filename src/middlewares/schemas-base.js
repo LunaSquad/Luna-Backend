@@ -31,13 +31,16 @@ export const senhaSchema = z
 export const cpfSchema = z
   .string()
   .trim()
-  .regex(/^\d{11}$/, "O CPF deve conter exatamente 11 números (sem pontos ou traços).");
+  .regex(
+    /^\d{11}$/,
+    "O CPF deve conter exatamente 11 números (sem pontos ou traços)."
+  );
 
 export const telefoneSchema = z
   .string()
   .trim()
   .min(1, "O telefone é obrigatório.")
-  .regex(/^\d{10,11}$/, "O telefone deve conter entre 10 e 11 números.",);
+  .regex(/^\d{10,11}$/, "O telefone deve conter entre 10 e 11 números.");
 
 export const criarDataSchema = (nomeCampo = "data") =>
   z

@@ -1,6 +1,9 @@
 import { Router } from "express";
 import ProfessorController from "../controllers/professor.controller.js";
-import { validarCadastroProfessor, validarUpdateProfessor } from "../middlewares/validacoes/validar-professor.js";
+import {
+  validarCadastroProfessor,
+  validarUpdateProfessor,
+} from "../middlewares/validacoes/validar-professor.js";
 import { auth } from "../middlewares/auth.js";
 import { somenteProfessor } from "../middlewares/somente-professor.js";
 import { somenteAdmin } from "../middlewares/somente-admin.js";
@@ -17,12 +20,7 @@ routes.post(
 );
 
 // Listar todos — exclusivo ADM
-routes.get(
-  "/professores",
-  auth,
-  somenteAdmin,
-  ProfessorController.listar
-);
+routes.get("/professores", auth, somenteAdmin, ProfessorController.listar);
 
 // Consultar perfil
 routes.get(
@@ -41,7 +39,6 @@ routes.put(
   validarUpdateProfessor,
   ProfessorController.atualizarPerfil
 );
-
 
 // Excluir conta
 routes.delete(

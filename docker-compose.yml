@@ -1,0 +1,43 @@
+services:
+  db:
+    image: mongo:7
+    container_name: mongo-dev
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api-service
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - DB_URL=mongodb://db:27017/luna
+      - JWT_SECRET=${JWT_SECRET}
+      - NODE_ENV=development
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      - CI=true
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=500
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - backend_node_modules:/app/node_modules
+    command: sh -c "node scripts/seedMaterias.js && node src/index.js"
+
+volumes:
+  mongodata:
+  backend_node_modules:

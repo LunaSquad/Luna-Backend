@@ -7,12 +7,12 @@ const usuarioSchema = new mongoose.Schema(
       required: [true, "O email é obrigatório"],
       unique: true,
       lowercase: true,
-      trim: true
+      trim: true,
     },
     senha: {
       type: String,
       required: true,
-      select: false
+      select: false,
     },
     tipoUser: {
       type: String,
@@ -20,7 +20,7 @@ const usuarioSchema = new mongoose.Schema(
       required: true,
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 export default mongoose.model("Usuario", usuarioSchema);

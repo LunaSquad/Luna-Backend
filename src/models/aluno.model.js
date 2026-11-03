@@ -12,7 +12,7 @@ const hiperfocoSchema = mongoose.Schema(
       default: null,
     },
   },
-  { _id: false },
+  { _id: false }
 );
 
 const alunoSchema = mongoose.Schema(
@@ -22,13 +22,13 @@ const alunoSchema = mongoose.Schema(
       ref: "Usuario",
       required: [true, "O aluno deve estar vinculado a um usuário"],
       index: true,
-      unique: true
+      unique: true,
     },
     turmaId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Turma",
       default: null,
-      index: true
+      index: true,
     },
     nome: {
       type: String,
@@ -60,7 +60,7 @@ const alunoSchema = mongoose.Schema(
       trim: true,
       match: [
         /^\d{10,11}$/,
-        "O telefone deve conter entre 10 e 11 dígitos numéricos (apenas números, com DDD)"
+        "O telefone deve conter entre 10 e 11 dígitos numéricos (apenas números, com DDD)",
       ],
       required: [true, "O telefone de contato é obrigatório"],
     },
@@ -77,7 +77,7 @@ const alunoSchema = mongoose.Schema(
       default: null, // Por padrão é NULO, pois é cadastrado via Mobile
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 export default mongoose.model("Aluno", alunoSchema);

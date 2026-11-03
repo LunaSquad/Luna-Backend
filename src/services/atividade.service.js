@@ -127,7 +127,10 @@ class AtividadeService {
         throw new AppError("Atividade não encontrada.", 404);
       }
 
-      if (!Array.isArray(atividade.respostas) || atividade.respostas.length === 0) {
+      if (
+        !Array.isArray(atividade.respostas) ||
+        atividade.respostas.length === 0
+      ) {
         throw new AppError(
           "Esta atividade ainda não possui respostas entregues pelo aluno.",
           400
@@ -149,13 +152,10 @@ class AtividadeService {
 
       const aluno = mongoose.Types.ObjectId.isValid(atividade.alunoID)
         ? await Aluno.findOne({
-          $or: [
-            { _id: atividade.alunoID },
-            { usuarioId: atividade.alunoID },
-          ],
-        })
-          .select("_id usuarioId nome urlFotoAluno")
-          .lean()
+            $or: [{ _id: atividade.alunoID }, { usuarioId: atividade.alunoID }],
+          })
+            .select("_id usuarioId nome urlFotoAluno")
+            .lean()
         : null;
 
       const totalQuestoes =
@@ -219,7 +219,10 @@ class AtividadeService {
         throw new AppError("Atividade não encontrada.", 404);
       }
 
-      if (!Array.isArray(atividade.respostas) || atividade.respostas.length === 0) {
+      if (
+        !Array.isArray(atividade.respostas) ||
+        atividade.respostas.length === 0
+      ) {
         throw new AppError(
           "Não é possível corrigir uma atividade que ainda não foi respondida pelo aluno.",
           400

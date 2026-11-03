@@ -3,8 +3,13 @@ import dotenv from "dotenv";
 import dns from "dns";
 import Materia from "../src/models/materia.model.js";
 
-// Configurando os servidores DNS para resolver o SRV do Atlas
-dns.setServers(["1.1.1.1", "8.8.8.8"]);
+dotenv.config();
+
+// Só configura DNS externo se a URL for SRV (MongoDB Atlas)
+if (process.env.DB_URL && process.env.DB_URL.startsWith("mongodb+srv://")) {
+  dns.setServers(["1.1.1.1", "8.8.8.8"]);
+}
+// ... restante do seu código permanece idêntico
 
 // Configs
 dotenv.config();

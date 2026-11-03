@@ -12,7 +12,9 @@ export function converterCamposJSON(body, campos) {
 
         body[campo] = parsed;
       } catch {
-        const erro = new Error(`O campo "${campo}" contém um formato JSON inválido.`);
+        const erro = new Error(
+          `O campo "${campo}" contém um formato JSON inválido.`
+        );
         erro.statusCode = 400;
         throw erro;
       }

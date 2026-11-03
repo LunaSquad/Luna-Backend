@@ -39,14 +39,14 @@ class PlanoDeAulaService {
         : "Plano de Aula (Anexo)";
 
       const tituloFinal = ehAnexo
-        ? dadosPlanoDeAula.titulo ?? nomeArquivoSemExtensao
+        ? (dadosPlanoDeAula.titulo ?? nomeArquivoSemExtensao)
         : dadosPlanoDeAula.titulo;
 
       const novoPlano = await PlanoDeAula.create({
         ...dadosPlanoDeAula,
         titulo: tituloFinal,
         descricao: ehAnexo
-          ? dadosPlanoDeAula.descricao ?? null
+          ? (dadosPlanoDeAula.descricao ?? null)
           : dadosPlanoDeAula.descricao,
         professorId,
         urlPlanoDeAula,

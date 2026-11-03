@@ -7,7 +7,7 @@ const topicoExplicacaoSchema = new mongoose.Schema(
     textoAdaptado: { type: String, trim: true, default: null },
     dicaVisual: { type: String, trim: true, default: null },
   },
-  { _id: false },
+  { _id: false }
 );
 
 // Sub-schema para os tópicos de exemplo prático (gerado pela IA)
@@ -17,7 +17,7 @@ const topicoExemploSchema = new mongoose.Schema(
     passoAPasso: { type: String, trim: true, default: null },
     conclusao: { type: String, trim: true, default: null },
   },
-  { _id: false },
+  { _id: false }
 );
 
 // Sub-schema para cada questão dentro de uma missão (gerado pela IA)
@@ -42,7 +42,7 @@ const questaoSchema = new mongoose.Schema(
       default: [],
     },
   },
-  { _id: false },
+  { _id: false }
 );
 
 // Sub-schema para cada missão (Missão 1, Missão 2...)
@@ -63,7 +63,7 @@ const itemAtividadeSchema = new mongoose.Schema(
       default: [],
     },
   },
-  { _id: false },
+  { _id: false }
 );
 
 // Sub-schema para cada resposta enviada pelo aluno no mobile
@@ -76,7 +76,7 @@ const respostaAlunoItemSchema = new mongoose.Schema(
     acertou: { type: Boolean, required: true },
     tipo: { type: String, trim: true, default: "objetiva" },
   },
-  { _id: false },
+  { _id: false }
 );
 
 // Schema principal da collection "atividades"
@@ -153,7 +153,7 @@ const atividadeSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 export default mongoose.model("Atividade", atividadeSchema, "atividades");
