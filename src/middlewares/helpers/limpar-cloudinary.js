@@ -8,7 +8,7 @@ export async function limparArquivoCloudinary(file) {
   } catch (erroCloudinary) {
     console.error(
       "Erro ao remover arquivo órfão no Cloudinary:",
-      erroCloudinary,
+      erroCloudinary
     );
   }
 }
@@ -28,16 +28,14 @@ export async function limparArquivosMultiplosCloudinary(files) {
 
   resultados.forEach((resultado) => {
     if (resultado.status === "rejected") {
-      console.error(
-        "Erro ao remover arquivo do Cloudinary:",
-        resultado.reason,
-      );
+      console.error("Erro ao remover arquivo do Cloudinary:", resultado.reason);
     }
   });
 }
 
 export async function deletarArquivoAntigoPorUrl(url) {
-  if (!url || typeof url !== "string" || !url.includes("res.cloudinary.com")) return;
+  if (!url || typeof url !== "string" || !url.includes("res.cloudinary.com"))
+    return;
 
   try {
     const regex = /\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/;
@@ -51,6 +49,9 @@ export async function deletarArquivoAntigoPorUrl(url) {
       resource_type: isPdf ? "raw" : "image",
     });
   } catch (erro) {
-    console.error("Erro ao deletar arquivo antigo do Cloudinary por URL:", erro);
+    console.error(
+      "Erro ao deletar arquivo antigo do Cloudinary por URL:",
+      erro
+    );
   }
 }

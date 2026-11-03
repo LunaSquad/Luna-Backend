@@ -1,8 +1,8 @@
-import Aluno from '../models/aluno.model.js';
-import Usuario from '../models/usuario.model.js';
+import Aluno from "../models/aluno.model.js";
+import Usuario from "../models/usuario.model.js";
 import UsuarioService from "./usuario.service.js";
-import { v2 as cloudinary } from 'cloudinary';
-import dotenv from 'dotenv';
+import { v2 as cloudinary } from "cloudinary";
+import dotenv from "dotenv";
 import mongoose from "mongoose";
 
 dotenv.config();
@@ -10,33 +10,30 @@ dotenv.config();
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 class AlunoService {
-
   // 1. CREATE - Método para registar um novo aluno
   async registrar(dadosAluno, dadosUsuario) {
     const novoUsuario = await UsuarioService.criarUsuario({
       ...dadosUsuario,
-      tipoUser: "aluno"
+      tipoUser: "aluno",
     });
 
     try {
       const novoAluno = new Aluno({
         ...dadosAluno,
         email: dadosUsuario.email,
-        usuarioId: novoUsuario._id
+        usuarioId: novoUsuario._id,
       });
 
       return await novoAluno.save();
-
     } catch (error) {
       await Usuario.findByIdAndDelete(novoUsuario._id);
       throw new Error(`Erro ao registar aluno: ${error.message}`);
     }
   }
-
 
   // 2. READ ALL - Método para listar todos os alunos
   async listarTodos(semTurma = false, incluirTurmaId = null) {
@@ -45,10 +42,7 @@ class AlunoService {
 
       if (semTurma) {
         if (incluirTurmaId && mongoose.Types.ObjectId.isValid(incluirTurmaId)) {
-          filtro.$or = [
-            { turmaId: null },
-            { turmaId: incluirTurmaId }
-          ];
+          filtro.$or = [{ turmaId: null }, { turmaId: incluirTurmaId }];
         } else {
           filtro.turmaId = null;
         }
@@ -62,7 +56,6 @@ class AlunoService {
     }
   }
 
-
   // 3. READ ONE - Método para buscar um aluno por ID
   async buscarPorId(id) {
     const aluno = await Aluno.findOne({ _id: id })
@@ -75,7 +68,6 @@ class AlunoService {
     return aluno;
   }
 
-
   // 4. UPDATE - Método para atualizar os dados do aluno
   async atualizar(id, dadosAtualizados) {
     const alunoAtual = await Aluno.findOne({ _id: id });
@@ -87,8 +79,8 @@ class AlunoService {
     if (dadosAtualizados.urlFotoAluno && alunoAtual.urlFotoAluno) {
       if (dadosAtualizados.urlFotoAluno !== alunoAtual.urlFotoAluno) {
         try {
-          const partes = alunoAtual.urlFotoAluno.split('/');
-          const publicId = partes.slice(-3).join('/').split('.')[0];
+          const partes = alunoAtual.urlFotoAluno.split("/");
+          const publicId = partes.slice(-3).join("/").split(".")[0];
           await cloudinary.uploader.destroy(publicId);
         } catch (err) {
           console.error("Erro ao apagar foto antiga do aluno:", err);
@@ -99,8 +91,8 @@ class AlunoService {
     if (dadosAtualizados.urlFotoLaudo && alunoAtual.urlFotoLaudo) {
       if (dadosAtualizados.urlFotoLaudo !== alunoAtual.urlFotoLaudo) {
         try {
-          const partes = alunoAtual.urlFotoLaudo.split('/');
-          const publicId = partes.slice(-3).join('/').split('.')[0];
+          const partes = alunoAtual.urlFotoLaudo.split("/");
+          const publicId = partes.slice(-3).join("/").split(".")[0];
           await cloudinary.uploader.destroy(publicId);
         } catch (err) {
           console.error("Erro ao apagar laudo antigo do aluno:", err);
@@ -119,7 +111,6 @@ class AlunoService {
     return alunoAtualizado;
   }
 
-
   // 5. DELETE - Método para excluir um aluno
   async deletar(id) {
     const aluno = await Aluno.findOne({ _id: id });
@@ -130,8 +121,8 @@ class AlunoService {
 
     if (aluno.urlFotoAluno) {
       try {
-        const partes = aluno.urlFotoAluno.split('/');
-        const publicId = partes.slice(-3).join('/').split('.')[0];
+        const partes = aluno.urlFotoAluno.split("/");
+        const publicId = partes.slice(-3).join("/").split(".")[0];
         await cloudinary.uploader.destroy(publicId);
       } catch (err) {
         console.error("Erro ao apagar foto do aluno no Cloudinary:", err);
@@ -140,8 +131,8 @@ class AlunoService {
 
     if (aluno.urlFotoLaudo) {
       try {
-        const partes = aluno.urlFotoLaudo.split('/');
-        const publicId = partes.slice(-3).join('/').split('.')[0];
+        const partes = aluno.urlFotoLaudo.split("/");
+        const publicId = partes.slice(-3).join("/").split(".")[0];
         await cloudinary.uploader.destroy(publicId);
       } catch (err) {
         console.error("Erro ao apagar laudo do aluno no Cloudinary:", err);

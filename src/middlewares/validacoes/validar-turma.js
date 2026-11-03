@@ -2,24 +2,32 @@ import { z } from "zod";
 import { nomeSchema } from "../schemas-base.js";
 import { responderErroValidacao } from "../helpers/responder-erro-validacao.js";
 
-const dadosTurmaSchema = z.object({
-  nome: nomeSchema,
-}).strict();
+const dadosTurmaSchema = z
+  .object({
+    nome: nomeSchema,
+  })
+  .strict();
 
 // Schema de Cadastro
-const registroTurmaSchema = z.object({
-  dadosTurma: dadosTurmaSchema,
-}).strict();
+const registroTurmaSchema = z
+  .object({
+    dadosTurma: dadosTurmaSchema,
+  })
+  .strict();
 
 // Schema de Atualização
-const dadosTurmaUpdateSchema = dadosTurmaSchema.partial().refine(
-  (dados) => Object.values(dados).some((valor) => valor !== undefined),
-  "Informe pelo menos um dado da turma.",
-);
+const dadosTurmaUpdateSchema = dadosTurmaSchema
+  .partial()
+  .refine(
+    (dados) => Object.values(dados).some((valor) => valor !== undefined),
+    "Informe pelo menos um dado da turma."
+  );
 
-const updateTurmaSchema = z.object({
-  dadosTurma: dadosTurmaUpdateSchema.optional(),
-}).strict();
+const updateTurmaSchema = z
+  .object({
+    dadosTurma: dadosTurmaUpdateSchema.optional(),
+  })
+  .strict();
 
 // --- MIDDLEWARES ---
 
@@ -29,7 +37,6 @@ export const validarCadastroTurma = (req, res, next) => {
     req.body = registroTurmaSchema.parse(req.body);
 
     return next();
-
   } catch (error) {
     return responderErroValidacao(res, error, "no cadastro da turma");
   }
@@ -50,7 +57,6 @@ export const validarUpdateTurma = (req, res, next) => {
     req.body = dadosValidados;
 
     return next();
-
   } catch (error) {
     return responderErroValidacao(res, error, "na atualização da turma");
   }

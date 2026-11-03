@@ -1,9 +1,8 @@
-import Usuario from '../models/usuario.model.js';
+import Usuario from "../models/usuario.model.js";
 import bcrypt from "bcrypt";
 import { AppError } from "../middlewares/helpers/app-error.js";
 
 class UsuarioService {
-
   // Método pra criar um novo usuário
   async criarUsuario(dados) {
     const usuarioExistente = await Usuario.findOne({ email: dados.email });
@@ -17,13 +16,12 @@ class UsuarioService {
     const novoUsuario = new Usuario({
       email: dados.email,
       senha: senhaCriptografada,
-      tipoUser: dados.tipoUser
-    })
+      tipoUser: dados.tipoUser,
+    });
 
     // Retorna o usuário criado
     return await novoUsuario.save();
   }
-
 
   // Método da busca de usuario por email
   async buscarUsuarioPorEmail(email) {

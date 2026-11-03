@@ -1,0 +1,88 @@
+name: Luna Backend CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - "README.md"
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Job 1: Validações Estáticas e Testes Unitários Rápidos (Fail-Fast)
+  validacoes-e-testes:
+    name: 1. Qualidade, Formatação e Testes Unitários
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+
+    steps:
+      - name: 1. Baixar o código-fonte
+        uses: actions/checkout@v4
+
+      - name: 2. Habilitar o pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: 3. Configurar o Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: 4. Instalar Dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: 5. Validar Padronização de Código (ESLint)
+        run: pnpm run lint
+
+      - name: 6. Validar Formatação de Arquivos (Prettier)
+        run: pnpm run format:check
+
+      - name: 7. Executar Testes Unitários com Vitest
+        run: pnpm run test:coverage
+        env:
+          NODE_ENV: test
+
+      - name: 8. Publicar Relatório de Cobertura no Resumo do Job
+        if: always()
+        run: |
+          echo "## Relatório de Cobertura de Código e Qualidade" >> $GITHUB_STEP_SUMMARY
+          echo "Execução de testes e inspeção estática concluídas para o commit \`${{ github.sha }}\`." >> $GITHUB_STEP_SUMMARY
+
+      - name: 9. Salvar Artefatos de Cobertura (HTML e LCOV)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-backend
+          path: coverage
+          retention-days: 14
+
+  # Job 2: Validação de Build da Imagem Docker (Só executa se o Job 1 passar)
+  validar-build-docker:
+    name: 2. Validação de Build do Docker
+    needs: [validacoes-e-testes]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: 2. Testar se o Dockerfile Compila sem Erros
+        run: docker build -t luna-api-service:smoke-test .
+
+      - name: 3. Resumo da Execução
+        run: |
+          echo "### Resumo da Execução do Pipeline de CI" >> $GITHUB_STEP_SUMMARY
+          echo "Integração Contínua concluída com sucesso!" >> $GITHUB_STEP_SUMMARY
+          echo "- Autor: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY

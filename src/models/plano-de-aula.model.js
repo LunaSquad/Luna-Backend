@@ -51,4 +51,8 @@ const planoDeAulaSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("PlanoDeAula", planoDeAulaSchema, "planos_de_aula");
+export default mongoose.model(
+  "PlanoDeAula",
+  planoDeAulaSchema,
+  "planos_de_aula"
+);

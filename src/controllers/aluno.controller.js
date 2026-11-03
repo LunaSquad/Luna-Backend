@@ -1,4 +1,4 @@
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary } from "cloudinary";
 import AlunoService from "../services/aluno.service.js";
 
 class AlunoController {
@@ -22,7 +22,6 @@ class AlunoController {
         mensagem: "Aluno registrado com sucesso!",
         aluno: novoAluno,
       });
-
     } catch (error) {
       if (req.files) {
         try {
@@ -34,7 +33,10 @@ class AlunoController {
             }
           }
         } catch (cloudinaryError) {
-          console.error("Erro ao fazer rollback dos arquivos do aluno:", cloudinaryError);
+          console.error(
+            "Erro ao fazer rollback dos arquivos do aluno:",
+            cloudinaryError
+          );
         }
       }
 
@@ -48,14 +50,16 @@ class AlunoController {
       const { semTurma, turmaId } = req.query;
 
       const alunos = await AlunoService.listarTodos(
-        semTurma === 'true',
+        semTurma === "true",
         turmaId
       );
 
       return res.status(200).json(alunos);
     } catch (error) {
       console.error("Erro no Controller Aluno:", error.message);
-      return res.status(400).json({ erro: "Erro interno ao listar os alunos." });
+      return res
+        .status(400)
+        .json({ erro: "Erro interno ao listar os alunos." });
     }
   }
 

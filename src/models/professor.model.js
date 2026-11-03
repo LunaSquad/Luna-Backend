@@ -7,7 +7,7 @@ const professorSchema = new mongoose.Schema(
       ref: "Usuario",
       required: [true, "O professor deve estar vinculado a um usuário"],
       index: true,
-      unique: true
+      unique: true,
     },
     nome: {
       type: String,
@@ -39,7 +39,7 @@ const professorSchema = new mongoose.Schema(
       trim: true,
       match: [
         /^\d{10,11}$/,
-        "O telefone deve conter entre 10 e 11 dígitos numéricos (apenas números, com DDD)"
+        "O telefone deve conter entre 10 e 11 dígitos numéricos (apenas números, com DDD)",
       ],
       required: [true, "O telefone de contato é obrigatório"],
     },
@@ -48,7 +48,7 @@ const professorSchema = new mongoose.Schema(
       default: "https://caminho-para-imagem-padrao.com/foto.png",
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 export default mongoose.model("Professor", professorSchema, "professores");

@@ -73,9 +73,7 @@ class ProfessorController {
   // 5. DELETE
   async deletarPerfil(req, res) {
     try {
-      const resultado = await ProfessorService.deletar(
-        req.usuario.professorId
-      );
+      const resultado = await ProfessorService.deletar(req.usuario.professorId);
 
       return res.status(200).json(resultado);
     } catch (error) {

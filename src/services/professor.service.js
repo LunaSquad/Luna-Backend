@@ -3,15 +3,16 @@ import bcrypt from "bcrypt";
 import Professor from "../models/professor.model.js";
 import Usuario from "../models/usuario.model.js";
 import Turma from "../models/turma.model.js";
-import Aluno from "../models/aluno.model.js";
 import UsuarioService from "./usuario.service.js";
 import { AppError } from "../middlewares/helpers/app-error.js";
-import { limparArquivoCloudinary, deletarArquivoAntigoPorUrl } from "../middlewares/helpers/limpar-cloudinary.js";
+import {
+  limparArquivoCloudinary,
+  deletarArquivoAntigoPorUrl,
+} from "../middlewares/helpers/limpar-cloudinary.js";
 
 const SALT_ROUNDS = 10;
 
 class ProfessorService {
-
   // 1. CREATE
   async registrar({ dadosUsuario, dadosProfessor }, file) {
     let novoUsuario = null;
@@ -55,19 +56,14 @@ class ProfessorService {
 
       if (error instanceof AppError) throw error;
 
-      throw new AppError(
-        `Erro ao registrar professor: ${error.message}`,
-        400
-      );
+      throw new AppError(`Erro ao registrar professor: ${error.message}`, 400);
     }
   }
-
 
   // 2. READ ALL
   async listarTodos() {
     return await Professor.find().populate("usuarioId", "email tipoUser");
   }
-
 
   // 3. READ ONE
   async buscarPorId(id) {
@@ -87,7 +83,6 @@ class ProfessorService {
     return professor;
   }
 
-
   // 4. UPDATE
   async atualizar(id, { dadosUsuario, dadosProfessor } = {}, file) {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -101,10 +96,7 @@ class ProfessorService {
       const professorAtual = await Professor.findById(id);
 
       if (!professorAtual) {
-        throw new AppError(
-          "Professor não encontrado para atualização.",
-          404
-        );
+        throw new AppError("Professor não encontrado para atualização.", 404);
       }
 
       // 4.1 Validar duplicidade de e-mail e CPF
@@ -201,7 +193,6 @@ class ProfessorService {
       }
 
       return professorAtualizado;
-
     } catch (error) {
       if (!fotoNovaVinculada) {
         await limparArquivoCloudinary(file);
@@ -209,13 +200,9 @@ class ProfessorService {
 
       if (error instanceof AppError) throw error;
 
-      throw new AppError(
-        `Erro ao atualizar professor: ${error.message}`,
-        400
-      );
+      throw new AppError(`Erro ao atualizar professor: ${error.message}`, 400);
     }
   }
-
 
   // 5. DELETE
   async deletar(id) {

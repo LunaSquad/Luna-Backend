@@ -2,12 +2,24 @@
   "name": "luna-web-backend",
   "version": "1.0.0",
   "description": "Back do site web do projeto luna",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "seed": "node scripts/seedMaterias.js"
+    "seed": "node scripts/seedMaterias.js",
+    "seed:dev": "node scripts/seedDev.js",
+    "docker:build-api": "docker build -t api-service .",
+    "compose:up": "docker compose up -d --build",
+    "compose:down": "docker compose down",
+    "compose:logs": "docker compose logs -f",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.js\" \"scripts/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.js\" \"scripts/**/*.js\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "prepare": "husky"
   },
   "repository": {
     "type": "git",
@@ -33,10 +45,24 @@
     "multer": "^2.1.1",
     "multer-storage-cloudinary": "^4.0.0",
     "nodemon": "^3.1.11",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^4.3.6"
   },
-  "allowScripts": {
-    "bcrypt@6.0.0": true,
-    "core-js@3.49.0": true
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@vitest/coverage-v8": "^3.0.7",
+    "eslint": "^9.21.0",
+    "eslint-config-prettier": "^10.0.2",
+    "globals": "^16.0.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.5.2",
+    "vitest": "^3.0.7"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "bcrypt",
+      "core-js"
+    ]
   }
 }

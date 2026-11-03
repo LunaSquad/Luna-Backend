@@ -74,7 +74,7 @@ class TurmaService {
           for (const plano of planosDaTurma) {
             const entregasDoPlano = entregasDaTurma.filter(
               (ativ) =>
-                String(ativ.planoID || ativ.planoOrigemID) === String(plano._id),
+                String(ativ.planoID || ativ.planoOrigemID) === String(plano._id)
             );
 
             const todosCorrigidos =
@@ -104,7 +104,7 @@ class TurmaService {
               progresso,
             },
           };
-        }),
+        })
       );
 
       return turmasCompletas;
@@ -155,16 +155,16 @@ class TurmaService {
         const entregasDoAluno = entregasDaTurma.filter(
           (ativ) =>
             String(ativ.alunoID) === String(aluno._id) ||
-            String(ativ.alunoID) === String(aluno.usuarioId),
+            String(ativ.alunoID) === String(aluno.usuarioId)
         );
 
         const totalQuestoesRespondidas = entregasDoAluno.reduce(
           (acc, ativ) => acc + (ativ.totalQuestoes || 0),
-          0,
+          0
         );
         const totalAcertos = entregasDoAluno.reduce(
           (acc, ativ) => acc + (ativ.acertos || 0),
-          0,
+          0
         );
 
         const desempenho =
@@ -195,7 +195,7 @@ class TurmaService {
       const planosComStatus = planosDeAula.map((plano) => {
         const entregasDoPlano = entregasDaTurma.filter(
           (ativ) =>
-            String(ativ.planoID || ativ.planoOrigemID) === String(plano._id),
+            String(ativ.planoID || ativ.planoOrigemID) === String(plano._id)
         );
 
         const todosCorrigidos =
@@ -255,7 +255,7 @@ class TurmaService {
       const turmaAtualizada = await Turma.findOneAndUpdate(
         { _id: turmaId, professorId },
         { $set: { nome: dadosTurma.nome } },
-        { new: true, runValidators: true },
+        { new: true, runValidators: true }
       );
 
       if (!turmaAtualizada) {
@@ -286,14 +286,6 @@ class TurmaService {
       if (!turma) {
         throw new AppError("Turma não encontrada.", 404);
       }
-
-      const planosComAnexo = await PlanoDeAula.find({
-        turmaId,
-        tipoConteudo: "anexo",
-        urlPlanoDeAula: { $ne: null },
-      })
-        .select("urlPlanoDeAula")
-        .lean();
 
       await Promise.all([
         Aluno.updateMany({ turmaId }, { $set: { turmaId: null } }),

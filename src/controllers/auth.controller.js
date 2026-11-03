@@ -47,10 +47,7 @@ class AuthController {
         });
 
         if (!professor) {
-          console.error(
-            "Usuário professor sem perfil associado:",
-            usuario._id
-          );
+          console.error("Usuário professor sem perfil associado:", usuario._id);
 
           return res.status(500).json({
             erro: "Erro de integridade: perfil do professor não encontrado.",
